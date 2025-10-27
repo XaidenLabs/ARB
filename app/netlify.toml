@@ -1,0 +1,14 @@
+# netlify.toml
+[build]
+  base = "app"
+  command = "yarn install && yarn build"
+  publish = ".next"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_RPC_ENDPOINT,PROGRAM_ID"
+  SECRETS_SCAN_OMIT_PATHS = "node_modules,.next,dist,target,idl.json"
+  NODE_OPTIONS = "--max-old-space-size=8192"
+  NODE_ENV = "production"
+
+# Removed @netlify/plugin-nextjs - Netlify automatically uses OpenNext adapter for Next.js 13.5+
+  
