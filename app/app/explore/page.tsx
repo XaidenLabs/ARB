@@ -11,7 +11,7 @@ import {
   Star,
   Send,
   Loader2,
-  Award,
+  Share2,
 } from "lucide-react";
 import { DynamicTimestamp } from "@/components/DynamicTimestamp";
 import toast, { Toaster } from "react-hot-toast";
@@ -46,6 +46,78 @@ export default function ExplorePage() {
     "approve"
   );
   const [submitting, setSubmitting] = useState(false);
+  const [shareMenuId, setShareMenuId] = useState<string | null>(null);
+
+  /**
+   * ==============================================
+   * SHARE DATASET
+   * ==============================================
+   */
+  const shareDataset = async (dataset: Dataset) => {
+    const shareTitle = dataset.title;
+    const shareText = dataset.description
+      ? `${dataset.title}\n\n${dataset.description}`
+      : dataset.title;
+    const shareUrl = dataset.file_url;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success("Share sheet opened.");
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(
+          [shareTitle, dataset.description, shareUrl]
+            .filter(Boolean)
+            .join("\n\n")
+        );
+        toast.success("Dataset link copied to clipboard.");
+        return;
+      }
+
+      toast.error("Sharing is not supported on this device.");
+    } catch (error) {
+      console.error("Dataset share error:", error);
+      toast.error("Unable to share this dataset right now.");
+    }
+  };
+
+  const copyDatasetLink = async (dataset: Dataset) => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(dataset.file_url);
+        toast.success("Dataset link copied to clipboard.");
+        return;
+      }
+      toast.error("Copying is not supported on this device.");
+    } catch (error) {
+      console.error("Dataset copy link error:", error);
+      toast.error("Unable to copy this dataset link right now.");
+    }
+  };
+
+  useEffect(() => {
+    if (!shareMenuId) return;
+
+    const handleClickAway = () => setShareMenuId(null);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShareMenuId(null);
+    };
+
+    document.addEventListener("click", handleClickAway);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("click", handleClickAway);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [shareMenuId]);
 
   /**
    * ==============================================
@@ -231,7 +303,7 @@ export default function ExplorePage() {
       <div
         key={dataset.id}
         onClick={() => setSelectedDataset(dataset)}
-        className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
+        className="relative bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -254,7 +326,51 @@ export default function ExplorePage() {
               {dataset.description}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShareMenuId((current) =>
+                current === dataset.id ? null : dataset.id
+              );
+            }}
+            className="ml-3 text-gray-400 hover:text-blue-600 transition-colors"
+            aria-haspopup="true"
+            aria-expanded={shareMenuId === dataset.id}
+            aria-label={`Share ${dataset.title}`}
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
         </div>
+        {shareMenuId === dataset.id && (
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="absolute top-5 right-5 z-20 w-40 rounded-lg border border-gray-200 bg-white shadow-lg"
+          >
+            <button
+              type="button"
+              onClick={async (event) => {
+                event.stopPropagation();
+                setShareMenuId(null);
+                await shareDataset(dataset);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Share dataset
+            </button>
+            <button
+              type="button"
+              onClick={async (event) => {
+                event.stopPropagation();
+                setShareMenuId(null);
+                await copyDatasetLink(dataset);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Copy link
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <span className="text-sm font-medium text-gray-900 truncate">
             📄 {dataset.file_name}
