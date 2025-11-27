@@ -239,7 +239,6 @@ export default function ModernLandingPage() {
     <div className="min-h-screen">
 
       <HeroSection
-        onUploadClick={handleUploadClick}
         onExploreClick={handleExploreClick}
       />
 
