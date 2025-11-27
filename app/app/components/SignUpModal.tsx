@@ -22,6 +22,9 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
   const [institution, setInstitution] = useState('');
   const [researchField, setResearchField] = useState('');
   const [country, setCountry] = useState('');
+  const [academicQualifications, setAcademicQualifications] = useState('');
+  const [researchBackground, setResearchBackground] = useState('');
+  const [roleSelection, setRoleSelection] = useState<'contributor' | 'reviewer' | 'organization'>('contributor');
 
   // Password strength
   const [passwordStrength, setPasswordStrength] = useState({
@@ -79,6 +82,9 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
           institution: institution.trim() || undefined,
           researchField: researchField || undefined,
           country: country || undefined,
+          academicQualifications: academicQualifications.trim() || undefined,
+          researchBackground: researchBackground.trim() || undefined,
+          roleSelection,
         }),
       });
 
@@ -191,6 +197,7 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                     placeholder="John Doe"
                     required
                     disabled={isLoading}
+                    autoComplete="name"
                   />
                 </div>
 
@@ -201,6 +208,8 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                   </label>
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -218,6 +227,8 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      minLength={8}
                       value={password}
                       onChange={handlePasswordChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
@@ -281,10 +292,39 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                   )}
                 </div>
 
-                {/* Optional Fields */}
+                {/* Role */}
+                <div className="pt-1">
+                  <p className="text-sm font-medium text-gray-700 mb-3">
+                    Choose your role
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: 'contributor', label: 'Contributor', desc: 'Upload and share datasets' },
+                      { value: 'reviewer', label: 'Reviewer', desc: 'Evaluate and verify data' },
+                      { value: 'organization', label: 'Organization', desc: 'Publish on behalf of an org' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => setRoleSelection(option.value as typeof roleSelection)}
+                        className={`text-left p-3 rounded-xl border transition ${
+                          roleSelection === option.value
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-gray-200 hover:border-blue-200'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900 text-sm">{option.label}</div>
+                        <div className="text-xs text-gray-600 mt-1">{option.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional Fields */}
                 <div className="pt-2">
                   <p className="text-sm font-medium text-gray-700 mb-3">
-                    Additional Info (Optional)
+                    Profile details
                   </p>
 
                   <div className="space-y-3">
@@ -294,6 +334,15 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                       onChange={(e) => setInstitution(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                       placeholder="Institution / University"
+                      disabled={isLoading}
+                    />
+
+                    <input
+                      type="text"
+                      value={academicQualifications}
+                      onChange={(e) => setAcademicQualifications(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                      placeholder="Academic qualifications (e.g., MSc Data Science)"
                       disabled={isLoading}
                     />
 
@@ -314,6 +363,14 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                       <option value="Engineering">Engineering</option>
                       <option value="Other">Other</option>
                     </select>
+
+                    <textarea
+                      value={researchBackground}
+                      onChange={(e) => setResearchBackground(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm min-h-[90px]"
+                      placeholder="Research background, interests, or focus areas"
+                      disabled={isLoading}
+                    />
 
                     <input
                       type="text"
@@ -373,3 +430,4 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
     </div>
   );
 }
+ 

@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-duplicate-props */
 "use client"
 
 import { useState } from 'react';
@@ -84,7 +85,7 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalPr
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
                 <AlertCircle className="w-5 h-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800">Unable to signin</p>
               </div>
             )}
 
@@ -97,13 +98,14 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalPr
                 </label>
                 <input
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="you@university.edu"
                   required
                   disabled={isLoading}
-                  autoComplete="email"
                 />
               </div>
 
@@ -115,13 +117,14 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalPr
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
                     placeholder="••••••••"
                     required
                     disabled={isLoading}
-                    autoComplete="current-password"
                   />
                   <button
                     type="button"

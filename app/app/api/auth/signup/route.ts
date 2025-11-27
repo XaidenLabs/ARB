@@ -16,7 +16,24 @@ const supabaseAdmin = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, fullName } = body;
+    const {
+      email,
+      password,
+      fullName,
+      institution,
+      researchField,
+      country,
+      academicQualifications,
+      researchBackground,
+      roleSelection,
+    } = body;
+
+    const roleMap: Record<string, 'researcher' | 'reviewer'> = {
+      contributor: 'researcher',
+      reviewer: 'reviewer',
+      organization: 'researcher',
+    };
+    const dbRole = roleMap[String(roleSelection)] || 'researcher';
 
     // Validation
     if (!email || !password) {
@@ -52,6 +69,12 @@ export async function POST(req: NextRequest) {
       email_confirm: true, // Auto-confirm for hackathon
       user_metadata: {
         full_name: fullName || email,
+        institution,
+        research_field: researchField,
+        country,
+        academic_qualifications: academicQualifications,
+        research_background: researchBackground,
+        role_selection: roleSelection || 'contributor',
       }
     });
 
@@ -107,6 +130,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Update profile with extended fields
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from('users')
+      .update({
+        full_name: fullName || email,
+        institution: institution || null,
+        research_field: researchField || null,
+        country: country || null,
+        role: dbRole,
+        bio: researchBackground || null,
+      })
+      .eq('id', userId);
+
+    if (profileUpdateError) {
+      console.error('Profile update error:', profileUpdateError);
+      return NextResponse.json(
+        { error: 'Account created but profile update failed. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     console.log('Profile verified:', profile);
 
     return NextResponse.json({
@@ -115,6 +159,7 @@ export async function POST(req: NextRequest) {
         id: authData.user.id,
         email: authData.user.email,
         fullName: profile?.full_name || fullName,
+        role: dbRole,
       },
       rewards: {
         welcomePoints: 100,

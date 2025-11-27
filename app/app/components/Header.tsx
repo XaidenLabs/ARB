@@ -14,7 +14,6 @@ import {
 import { useSession, signOut } from "next-auth/react";
 import { SignInModal } from "./SignInModal";
 import { SignUpModal } from "./SignUpModal";
-import { ProfileModal } from "./ProfileModal";
 import { ReviewInterface } from "./ReviewInterface";
 import { createClient } from "@/lib/supabase";
 import { UploadModal } from "./UploadModal";
@@ -30,7 +29,6 @@ export function Header({ onUploadClick }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
@@ -92,6 +90,21 @@ export function Header({ onUploadClick }: HeaderProps) {
     ? session.user.name.charAt(0).toUpperCase()
     : "?";
 
+  const computeLevelInfo = (points: number) => {
+    if (points >= 5000) return { level: 4, label: "Lead", priority: "Highest" };
+    if (points >= 2000) return { level: 3, label: "Trusted", priority: "High" };
+    if (points >= 500) return { level: 2, label: "Contributor", priority: "Standard" };
+    return { level: 1, label: "Explorer", priority: "Basic" };
+  };
+
+  const levelInfo = computeLevelInfo(userPoints || 0);
+  const roleLabel =
+    session?.user?.role === "reviewer"
+      ? "Reviewer"
+      : session?.user?.role === "admin"
+      ? "Admin"
+      : "Contributor";
+
   return (
     <>
       <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-40">
@@ -122,8 +135,11 @@ export function Header({ onUploadClick }: HeaderProps) {
               <Link href="/explore" className="text-gray-700 hover:text-blue-600">
                 Discover
               </Link>
+              <Link href="/community" className="text-gray-700 hover:text-blue-600">
+                Community
+              </Link>
               {session && (
-                <Link href="/my-datasets" className="text-gray-700 hover:text-blue-600">
+                <Link href="/datasets" className="text-gray-700 hover:text-blue-600">
                   My Datasets
                 </Link>
               )}
@@ -171,15 +187,20 @@ export function Header({ onUploadClick }: HeaderProps) {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen((s) => !s)}
-                      className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition"
+                      className="flex items-center gap-3 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition"
                       aria-haspopup="true"
                       aria-expanded={isDropdownOpen}
                     >
                       <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 font-bold">
                         {userInitial}
                       </div>
-                      <div className="text-sm font-semibold text-blue-800">
-                        {userPoints ?? 0} pts
+                      <div className="text-left">
+                        <div className="text-sm font-semibold text-blue-800">
+                          {userPoints ?? 0} pts
+                        </div>
+                        <div className="text-[11px] text-blue-700">
+                          {roleLabel} • L{levelInfo.level}
+                        </div>
                       </div>
                       <ChevronDown
                         className={`w-4 h-4 text-blue-700 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
@@ -196,20 +217,23 @@ export function Header({ onUploadClick }: HeaderProps) {
                           <p className="text-xs text-gray-500 truncate">
                             {session.user?.email ?? ""}
                           </p>
-                          <p className="mt-1 text-xs text-blue-600 font-medium">
-                            🌟 {userPoints ?? 0} Total Points
-                          </p>
+                          <div className="mt-2 space-y-1 text-xs">
+                            <p className="text-blue-700 font-semibold">
+                              🌟 {userPoints ?? 0} pts • Level {levelInfo.level} {levelInfo.label}
+                            </p>
+                            <p className="text-gray-600">
+                              Role: {roleLabel} • Priority: {levelInfo.priority}
+                            </p>
+                          </div>
                         </div>
 
-                        <button
-                          onClick={() => {
-                            setIsProfileModalOpen(true);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <User className="w-4 h-4" /> <span>Profile</span>
-                        </button>
+                        </Link>
 
                         <button
                           onClick={() => {
@@ -252,6 +276,9 @@ export function Header({ onUploadClick }: HeaderProps) {
                 <Link href="/explore" className="text-gray-700 hover:text-blue-600">
                   Discover
                 </Link>
+                <Link href="/community" className="text-gray-700 hover:text-blue-600">
+                  Community
+                </Link>
                 {session && (
                   <button
                     onClick={() => setIsUploadModalOpen(true)}
@@ -261,7 +288,7 @@ export function Header({ onUploadClick }: HeaderProps) {
                   </button>
                 )}
                 {session && (
-                  <Link href="/my-datasets" className="text-gray-700 hover:text-blue-600">
+                  <Link href="/datasets" className="text-gray-700 hover:text-blue-600">
                     My Datasets
                   </Link>
                 )}
@@ -293,11 +320,6 @@ export function Header({ onUploadClick }: HeaderProps) {
           setIsSignUpModalOpen(false);
           setIsSignInModalOpen(true);
         }}
-      />
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        onUpdate={refreshUserData}
       />
       <ReviewInterface
         isOpen={isReviewModalOpen}

@@ -35,10 +35,20 @@ export function ProfileModal({
     institution: "",
     researchField: "",
     country: "",
+    bio: "",
+    walletAddress: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    points: 0,
+    uploads: 0,
+    reviews: 0,
+  });
+  const [socialConnections, setSocialConnections] = useState<
+    { platform: string; platform_username: string }[]
+  >([]);
 
   // ✅ Load user data when modal opens
   useEffect(() => {
@@ -52,23 +62,35 @@ export function ProfileModal({
     try {
       setLoading(true);
 
-      const { data: profile, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", (session?.user as any)?.id)
-        .single();
+      const userId = (session?.user as any)?.id;
 
-      if (error) throw error;
+      const [{ data: profile, error: profileError }, { count: uploadsCount }, { count: reviewsCount }, { data: connections }] =
+        await Promise.all([
+          supabase.from("users").select("*").eq("id", userId).single(),
+          supabase.from("datasets").select("id", { count: "exact", head: true }).eq("uploader_id", userId),
+          supabase.from("reviews").select("id", { count: "exact", head: true }).eq("reviewer_id", userId),
+          supabase.from("social_connections").select("platform, platform_username").eq("user_id", userId),
+        ]);
 
-      if (profile) {
-        setFormData({
-          fullName: profile.full_name || "",
-          email: profile.email || "",
-          institution: profile.institution || "",
-          researchField: profile.research_field || "",
-          country: profile.country || "",
-        });
-      }
+      if (profileError) throw profileError;
+
+      setFormData({
+        fullName: profile?.full_name || "",
+        email: profile?.email || "",
+        institution: profile?.institution || "",
+        researchField: profile?.research_field || "",
+        country: profile?.country || "",
+        bio: profile?.bio || "",
+        walletAddress: profile?.wallet_address || "",
+      });
+
+      setStats({
+        points: profile?.total_points || 0,
+        uploads: uploadsCount || 0,
+        reviews: reviewsCount || 0,
+      });
+
+      setSocialConnections(connections || []);
     } catch (error) {
       console.error("Error loading profile:", error);
       toast.error("Failed to load profile data");
@@ -115,6 +137,8 @@ export function ProfileModal({
           institution: formData.institution.trim() || null,
           research_field: formData.researchField.trim() || null,
           country: formData.country.trim() || null,
+          bio: formData.bio.trim() || null,
+          wallet_address: formData.walletAddress.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", (session.user as any).id);
@@ -200,11 +224,11 @@ export function ProfileModal({
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Edit Profile</h2>
-            <button
-              onClick={onClose}
-              disabled={saving}
-              className="p-1 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50"
+              <h2 className="text-xl font-bold text-white">Edit Profile</h2>
+              <button
+                onClick={onClose}
+                disabled={saving}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50"
             >
               <X className="w-5 h-5 text-white" />
             </button>
@@ -217,7 +241,28 @@ export function ProfileModal({
               <p className="text-gray-600">Loading profile...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <StatPill label="Points" value={stats.points.toLocaleString()} accent="from-blue-500 to-purple-500" />
+                <StatPill label="Uploaded" value={stats.uploads.toString()} accent="from-emerald-500 to-teal-500" />
+                <StatPill label="Reviewed" value={stats.reviews.toString()} accent="from-amber-500 to-orange-500" />
+              </div>
+
+              {/* Wallet */}
+              <div className="rounded-xl border border-gray-200 p-4 bg-gray-50 flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">Wallet</p>
+                  <p className="text-sm text-gray-700 mt-1 break-all">
+                    {formData.walletAddress || "Not connected"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Balance</p>
+                  <p className="text-lg font-semibold text-gray-900">—</p>
+                </div>
+              </div>
+
               {/* Full Name */}
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
@@ -249,6 +294,21 @@ export function ProfileModal({
                   disabled={saving}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   required
+                />
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <BookOpen className="w-4 h-4 mr-2 text-gray-500" />
+                  Bio / Research background
+                </label>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => handleChange("bio", e.target.value)}
+                  placeholder="Tell others about your experience, interests, and focus areas."
+                  disabled={saving}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed min-h-[90px]"
                 />
               </div>
 
@@ -312,6 +372,27 @@ export function ProfileModal({
                 />
               </div>
 
+              {/* Social Connections */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-800">Social connections</p>
+                {socialConnections.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No social accounts linked yet. Connect to build trust and discover mutual connections.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {socialConnections.map((conn) => (
+                      <span
+                        key={`${conn.platform}-${conn.platform_username}`}
+                        className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium"
+                      >
+                        {conn.platform}: {conn.platform_username}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <button
@@ -342,5 +423,26 @@ export function ProfileModal({
         </div>
       </div>
     </>
+  );
+}
+
+function StatPill({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <p className="text-xs text-gray-500">{label}</p>
+      <div
+        className={`mt-2 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r ${accent} px-3 py-1 text-white text-sm font-semibold`}
+      >
+        {value}
+      </div>
+    </div>
   );
 }

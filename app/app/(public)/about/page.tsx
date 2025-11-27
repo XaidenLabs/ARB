@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from 'react';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
-import { useEnhancedWallet } from '../hooks/useEnhancedWallet';
-import { EnhancedUploadDialog } from '../components/EnhancedUploadDialog';
+import { Header } from '../../components/Header';
+import { Footer } from '../../components/Footer';
+import { useEnhancedWallet } from '../../hooks/useEnhancedWallet';
+import { EnhancedUploadDialog } from '../../components/EnhancedUploadDialog';
 import { Users, Target, Globe, TrendingUp, Award, Heart } from 'lucide-react';
 
 export default function AboutPage() {
@@ -42,12 +42,12 @@ export default function AboutPage() {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                We&apos;re revolutionizing how African researchers share, monetize, and access scientific data. 
-                Our platform creates a sustainable ecosystem where quality research is rewarded and 
+                We&apos;re revolutionizing how African researchers share, monetize, and access scientific data.
+                Our platform creates a sustainable ecosystem where quality research is rewarded and
                 knowledge flows freely across the continent.
               </p>
               <p className="text-lg text-gray-600 leading-relaxed">
-                By leveraging blockchain technology and AI-powered analysis, we ensure data integrity, 
+                By leveraging blockchain technology and AI-powered analysis, we ensure data integrity,
                 fair compensation, and accelerated scientific discovery across Africa.
               </p>
             </div>
@@ -125,7 +125,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Emmanuel</h3>
                 <p className="text-blue-600 font-medium mb-3">Co-Founder & CEO</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Visionary leader driving Africa&apos;s research revolution. Passionate about creating 
+                  Visionary leader driving Africa&apos;s research revolution. Passionate about creating
                   sustainable knowledge economies and empowering African researchers through blockchain technology.
                 </p>
               </div>
@@ -144,7 +144,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Francisca</h3>
                 <p className="text-green-600 font-medium mb-3">Co-Founder & CTO</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Technical architect behind our AI-powered platform. Expert in blockchain development 
+                  Technical architect behind our AI-powered platform. Expert in blockchain development
                   and machine learning, ensuring robust and scalable research data infrastructure.
                 </p>
               </div>
@@ -163,7 +163,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Walter</h3>
                 <p className="text-purple-600 font-medium mb-3">Head of Research</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Research strategist and academic liaison. Ensures our platform meets the highest 
+                  Research strategist and academic liaison. Ensures our platform meets the highest
                   academic standards while fostering collaboration across African research institutions.
                 </p>
               </div>
@@ -175,23 +175,23 @@ export default function AboutPage() {
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Blockchain Infrastructure</h3>
               <p className="text-gray-600 leading-relaxed">
-                Built on Solana for fast, low-cost transactions. Every dataset is cryptographically secured 
+                Built on Solana for fast, low-cost transactions. Every dataset is cryptographically secured
                 with immutable records of ownership, quality scores, and transaction history.
               </p>
             </div>
-            
+
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">AI-Powered Analysis</h3>
               <p className="text-gray-600 leading-relaxed">
-                Advanced AI systems automatically analyze uploaded research data, extracting metadata, 
+                Advanced AI systems automatically analyze uploaded research data, extracting metadata,
                 assessing quality, and ensuring datasets meet academic standards.
               </p>
             </div>
-            
+
             <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-8 rounded-2xl">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Sustainable Economics</h3>
               <p className="text-gray-600 leading-relaxed">
-                Our tokenomics model ensures researchers are fairly compensated while maintaining 
+                Our tokenomics model ensures researchers are fairly compensated while maintaining
                 affordable access to data for the broader research community.
               </p>
             </div>
@@ -227,8 +227,8 @@ export default function AboutPage() {
       <EnhancedUploadDialog
         isOpen={showUploadDialog}
         onClose={() => setShowUploadDialog(false)}
-        onUpload={async () => {}}
-        onSuccess={() => {}}
+        onUpload={async () => { }}
+        onSuccess={() => { }}
       />
     </div>
   );
