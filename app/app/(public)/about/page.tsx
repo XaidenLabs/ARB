@@ -1,15 +1,19 @@
 "use client"
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { useEnhancedWallet } from '../../hooks/useEnhancedWallet';
-import { EnhancedUploadDialog } from '../../components/EnhancedUploadDialog';
 import { Users, Target, Globe, TrendingUp, Award, Heart } from 'lucide-react';
+import Image from 'next/image';
+
+const EnhancedUploadDialog = dynamic(
+  () => import('../../components/EnhancedUploadDialog').then((mod) => mod.EnhancedUploadDialog),
+  { ssr: false },
+);
 
 export default function AboutPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const { walletState, connectWallet, disconnectWallet } = useEnhancedWallet();
+  const { walletState, connectWallet } = useEnhancedWallet();
 
   const handleUploadClick = async () => {
     if (!walletState.connected) {
@@ -115,18 +119,22 @@ export default function AboutPage() {
             {/* Emmanuel */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-square relative">
-                <img
-                  src="/Emmanuel.jpg"
-                  alt="Emmanuel - Co-Founder & CEO"
-                  className="w-full h-full object-cover"
+                <Image
+                  src="/Alfred.png"
+                  alt="Alfred - FUllstack & Blockchain Developer"
+                  fill
+                  sizes="(min-width: 1024px) 320px, 50vw"
+                  className="object-cover"
+                  priority
                 />
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Emmanuel</h3>
-                <p className="text-blue-600 font-medium mb-3">Co-Founder & CEO</p>
+                <p className="text-blue-600 font-medium mb-3">Fullstack & Blockhain Dev</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Visionary leader driving Africa&apos;s research revolution. Passionate about creating
-                  sustainable knowledge economies and empowering African researchers through blockchain technology.
+                  Technical architect behind our AI-powered platform. Expert in blockchain development
+                  and machine learning, ensuring robust and scalable research data infrastructure.
+
                 </p>
               </div>
             </div>
@@ -134,18 +142,22 @@ export default function AboutPage() {
             {/* Francisca */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-square relative">
-                <img
+                <Image
                   src="/Francisca.jpg"
                   alt="Francisca - Co-Founder & CTO"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 320px, 50vw"
+                  className="object-cover"
+                  priority
                 />
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Francisca</h3>
-                <p className="text-green-600 font-medium mb-3">Co-Founder & CTO</p>
+                <p className="text-green-600 font-medium mb-3">Operations & Strategy</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Technical architect behind our AI-powered platform. Expert in blockchain development
-                  and machine learning, ensuring robust and scalable research data infrastructure.
+
+                  Visionary leader driving Africa&apos;s research revolution. Passionate about creating
+                  sustainable knowledge economies and empowering African researchers through blockchain technology.
                 </p>
               </div>
             </div>
@@ -153,15 +165,18 @@ export default function AboutPage() {
             {/* Walter */}
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-square relative">
-                <img
+                <Image
                   src="/Walter.jpg"
                   alt="Walter - Head of Research"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 320px, 50vw"
+                  className="object-cover"
+                  priority
                 />
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Walter</h3>
-                <p className="text-purple-600 font-medium mb-3">Head of Research</p>
+                <p className="text-purple-600 font-medium mb-3">Visuals/Product Design</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
                   Research strategist and academic liaison. Ensures our platform meets the highest
                   academic standards while fostering collaboration across African research institutions.
@@ -224,12 +239,14 @@ export default function AboutPage() {
       </section>
 
 
-      <EnhancedUploadDialog
-        isOpen={showUploadDialog}
-        onClose={() => setShowUploadDialog(false)}
-        onUpload={async () => { }}
-        onSuccess={() => { }}
-      />
+      {showUploadDialog && (
+        <EnhancedUploadDialog
+          isOpen={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+          onUpload={async () => { }}
+          onSuccess={() => { }}
+        />
+      )}
     </div>
   );
 }

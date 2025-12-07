@@ -1,7 +1,7 @@
 "use client"
 
-import React from 'react';
-import { Download, Star, Calendar, FileText, Eye, DollarSign, Database } from 'lucide-react';
+import React, { memo, useMemo } from 'react';
+import { Download, Star, Calendar, FileText, Eye, Database } from 'lucide-react';
 import { Dataset } from '../hooks/useDatasets';
 
 interface ModernDatasetCardProps {
@@ -22,25 +22,37 @@ const fieldColors = {
   'Other': 'from-amber-400 to-orange-600'
 };
 
-export function ModernDatasetCard({ dataset, onPurchase, onView, isOwner }: ModernDatasetCardProps) {
-  const fieldColor = fieldColors[dataset.field as keyof typeof fieldColors] || fieldColors['Other'];
-  const priceInSol = dataset.price_lamports / 1e9;
-  const fileSizeInMB = (dataset.file_size / 1024 / 1024).toFixed(2);
+const getQualityBadgeColor = (score: number) => {
+  if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
+  if (score >= 80) return 'bg-blue-100 text-blue-800 border-blue-200';
+  if (score >= 70) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+  return 'bg-red-100 text-red-800 border-red-200';
+};
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+});
 
-  const getQualityBadgeColor = (score: number) => {
-    if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
-    if (score >= 80) return 'bg-blue-100 text-blue-800 border-blue-200';
-    if (score >= 70) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-red-100 text-red-800 border-red-200';
-  };
+function ModernDatasetCardComponent({ dataset, onPurchase, onView, isOwner }: ModernDatasetCardProps) {
+  const fieldColor = useMemo(
+    () => fieldColors[dataset.field as keyof typeof fieldColors] || fieldColors['Other'],
+    [dataset.field],
+  );
+  const priceInSol = useMemo(() => dataset.price_lamports / 1e9, [dataset.price_lamports]);
+  const fileSizeInMB = useMemo(
+    () => (dataset.file_size / 1024 / 1024).toFixed(2),
+    [dataset.file_size],
+  );
+  const qualityBadge = useMemo(
+    () => getQualityBadgeColor(dataset.quality_score),
+    [dataset.quality_score],
+  );
+  const formattedDate = useMemo(
+    () => formatDate(dataset.created_at),
+    [dataset.created_at],
+  );
 
   return (
     <div className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-gray-200">
@@ -51,7 +63,7 @@ export function ModernDatasetCard({ dataset, onPurchase, onView, isOwner }: Mode
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm text-white border border-white/30">
             {dataset.field}
           </span>
-          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${getQualityBadgeColor(dataset.quality_score)} backdrop-blur-sm`}>
+          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${qualityBadge} backdrop-blur-sm`}>
             <Star className="w-3 h-3 mr-1" />
             {dataset.quality_score}%
           </div>
@@ -105,7 +117,7 @@ export function ModernDatasetCard({ dataset, onPurchase, onView, isOwner }: Mode
           </div>
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <span>{formatDate(dataset.created_at)}</span>
+            <span>{formattedDate}</span>
           </div>
         </div>
 
@@ -171,3 +183,5 @@ export function ModernDatasetCard({ dataset, onPurchase, onView, isOwner }: Mode
     </div>
   );
 }
+
+export const ModernDatasetCard = memo(ModernDatasetCardComponent);

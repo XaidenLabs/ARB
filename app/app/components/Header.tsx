@@ -1,23 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Menu,
-  X,
-  LogOut,
-  Wallet,
-  User,
-  ChevronDown,
-} from "lucide-react";
+import dynamic from "next/dynamic";
+import { Menu, X, LogOut, Wallet, User, ChevronDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-import { SignInModal } from "./SignInModal";
-import { SignUpModal } from "./SignUpModal";
-import { ReviewInterface } from "./ReviewInterface";
 import { createClient } from "@/lib/supabase";
-import { UploadModal } from "./UploadModal";
-import { WalletModal } from "./WalletModal";
+
+const SignInModal = dynamic(
+  () => import("./SignInModal").then((mod) => mod.SignInModal),
+  { ssr: false },
+);
+const SignUpModal = dynamic(
+  () => import("./SignUpModal").then((mod) => mod.SignUpModal),
+  { ssr: false },
+);
+const ReviewInterface = dynamic(
+  () => import("./ReviewInterface").then((mod) => mod.ReviewInterface),
+  { ssr: false },
+);
+const UploadModal = dynamic(
+  () => import("./UploadModal").then((mod) => mod.UploadModal),
+  { ssr: false },
+);
 
 interface HeaderProps {
   onUploadClick?: () => void;
@@ -32,10 +38,9 @@ export function Header({ onUploadClick }: HeaderProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -235,15 +240,13 @@ export function Header({ onUploadClick }: HeaderProps) {
                           <User className="w-4 h-4" /> <span>Profile</span>
                         </Link>
 
-                        <button
-                          onClick={() => {
-                            setIsWalletModalOpen(true);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        <Link
+                          href="/wallet"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <Wallet className="w-4 h-4" /> <span>Wallet</span>
-                        </button>
+                        </Link>
 
                         <div className="border-t border-gray-100" />
 
@@ -292,6 +295,11 @@ export function Header({ onUploadClick }: HeaderProps) {
                     My Datasets
                   </Link>
                 )}
+                {session && (
+                  <Link href="/wallet" className="text-gray-700 hover:text-blue-600">
+                    Wallet
+                  </Link>
+                )}
                 <Link href="/faq" className="text-gray-700 hover:text-blue-600">
                   FAQ
                 </Link>
@@ -305,34 +313,38 @@ export function Header({ onUploadClick }: HeaderProps) {
       </header>
 
       {/* Modals */}
-      <SignInModal
-        isOpen={isSignInModalOpen}
-        onClose={() => setIsSignInModalOpen(false)}
-        onSwitchToSignup={() => {
-          setIsSignInModalOpen(false);
-          setIsSignUpModalOpen(true);
-        }}
-      />
-      <SignUpModal
-        isOpen={isSignUpModalOpen}
-        onClose={() => setIsSignUpModalOpen(false)}
-        onSwitchToLogin={() => {
-          setIsSignUpModalOpen(false);
-          setIsSignInModalOpen(true);
-        }}
-      />
-      <ReviewInterface
-        isOpen={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
-      />
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-      />
-      <WalletModal
-        isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
-      />
+      {isSignInModalOpen && (
+        <SignInModal
+          isOpen={isSignInModalOpen}
+          onClose={() => setIsSignInModalOpen(false)}
+          onSwitchToSignup={() => {
+            setIsSignInModalOpen(false);
+            setIsSignUpModalOpen(true);
+          }}
+        />
+      )}
+      {isSignUpModalOpen && (
+        <SignUpModal
+          isOpen={isSignUpModalOpen}
+          onClose={() => setIsSignUpModalOpen(false)}
+          onSwitchToLogin={() => {
+            setIsSignUpModalOpen(false);
+            setIsSignInModalOpen(true);
+          }}
+        />
+      )}
+      {isReviewModalOpen && (
+        <ReviewInterface
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+        />
+      )}
+      {isUploadModalOpen && (
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+        />
+      )}
     </>
   );
 }

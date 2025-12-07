@@ -66,6 +66,13 @@ export default function CommunityPage() {
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [threadDraft, setThreadDraft] = useState({
+    title: "",
+    body: "",
+    topic: "introductions" as Topic,
+  });
+  const [savingThreadId, setSavingThreadId] = useState<string | null>(null);
 
   const authHeaders = (): HeadersInit => {
     const token = (nextAuthSession as any)?.supabaseAccessToken;
@@ -241,6 +248,55 @@ export default function CommunityPage() {
     const { [threadId]: _, ...rest } = replies;
     setReplies(rest);
     toast.success("Thread deleted.");
+  };
+
+  const startEditThread = (thread: Thread) => {
+    setEditingThreadId(thread.id);
+    setThreadDraft({ title: thread.title, body: thread.body, topic: thread.topic });
+  };
+
+  const cancelEditThread = () => {
+    setEditingThreadId(null);
+    setSavingThreadId(null);
+    setThreadDraft({ title: "", body: "", topic: "introductions" });
+  };
+
+  const saveThreadEdit = async (threadId: string) => {
+    const token = (nextAuthSession as any)?.supabaseAccessToken;
+    if (!token) {
+      toast.error("Sign in to edit.");
+      return;
+    }
+    const title = threadDraft.title.trim();
+    const body = threadDraft.body.trim();
+    if (!title || !body) {
+      toast.error("Add a title and message.");
+      return;
+    }
+    setSavingThreadId(threadId);
+    try {
+      const res = await fetch(`/api/community/threads/${threadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ title, body, topic: threadDraft.topic }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.thread)
+        throw new Error(json.error || "Failed to update thread");
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === threadId
+            ? { ...t, ...json.thread, liked_by_me: t.liked_by_me }
+            : t
+        )
+      );
+      toast.success("Thread updated.");
+      cancelEditThread();
+    } catch (err) {
+      console.error("Update thread error:", err);
+      toast.error((err as any)?.message || "Could not update thread.");
+      setSavingThreadId(null);
+    }
   };
 
   const submitReply = async (threadId: string) => {
@@ -519,7 +575,7 @@ export default function CommunityPage() {
                   className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 w-full">
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
                           {thread.topic === "introductions"
@@ -530,36 +586,96 @@ export default function CommunityPage() {
                         </span>
                         <span>{new Date(thread.created_at).toLocaleString()}</span>
                       </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <Link
-                          href={`/community/${thread.id}`}
-                          className="text-lg font-semibold text-gray-900 hover:underline"
-                        >
-                          <span
-                            className="whitespace-pre-wrap"
-                            dangerouslySetInnerHTML={{
-                              __html: highlightMatch(thread.title).replace(/%%(.*?)%%/g, '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>'),
-                            }}
+                      {editingThreadId === thread.id ? (
+                        <div className="space-y-2">
+                          <input
+                            value={threadDraft.title}
+                            onChange={(e) => setThreadDraft((p) => ({ ...p, title: e.target.value }))}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Title"
                           />
-                        </Link>
-                        {thread.user_id === (nextAuthSession as any)?.user?.id && (
-                          <button
-                            type="button"
-                            onClick={() => deleteThread(thread.id)}
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-700">
-                        <span
-                          className="whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{
-                            __html: highlightMatch(thread.body).replace(/%%(.*?)%%/g, '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>'),
-                          }}
-                        />
-                      </p>
+                          <textarea
+                            value={threadDraft.body}
+                            onChange={(e) => setThreadDraft((p) => ({ ...p, body: e.target.value }))}
+                            rows={3}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Share your update..."
+                          />
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <span className="font-semibold text-gray-700">Topic:</span>
+                            <select
+                              value={threadDraft.topic}
+                              onChange={(e) =>
+                                setThreadDraft((p) => ({ ...p, topic: e.target.value as Topic }))
+                              }
+                              className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="introductions">Introduction</option>
+                              <option value="projects">Project</option>
+                              <option value="collaboration">Collab request</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => saveThreadEdit(thread.id)}
+                              disabled={savingThreadId === thread.id}
+                              className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-60"
+                            >
+                              {savingThreadId === thread.id ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditThread}
+                              className="inline-flex items-center gap-1 rounded border px-3 py-1 text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start justify-between gap-3">
+                            <Link
+                              href={`/community/${thread.id}`}
+                              className="text-lg font-semibold text-gray-900 hover:underline"
+                            >
+                              <span
+                                className="whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{
+                                  __html: highlightMatch(thread.title).replace(/%%(.*?)%%/g, '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>'),
+                                }}
+                              />
+                            </Link>
+                            {thread.user_id === (nextAuthSession as any)?.user?.id && (
+                              <div className="flex items-center gap-2 text-xs text-blue-700">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditThread(thread)}
+                                  className="hover:underline"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteThread(thread.id)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            <span
+                              className="whitespace-pre-wrap"
+                              dangerouslySetInnerHTML={{
+                                __html: highlightMatch(thread.body).replace(/%%(.*?)%%/g, '<mark class="bg-amber-200 text-gray-900 rounded px-0.5">$1</mark>'),
+                              }}
+                            />
+                          </p>
+                        </>
+                      )}
                     </div>
                     <div className="text-right text-sm text-gray-600 space-y-1">
                       <div className="font-semibold text-gray-900">

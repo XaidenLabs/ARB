@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client"
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { SearchSection } from './components/SearchSection';
 import { ProblemSection } from './components/ProblemSection';
@@ -10,11 +10,18 @@ import { SolutionSection } from './components/SolutionSection';
 import { Footer } from './components/Footer';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import { ModernDatasetCard } from './components/ModernDatasetCard';
-import { EnhancedUploadDialog } from './components/EnhancedUploadDialog';
-import { PaymentModal } from './components/PaymentModal';
 import { useEnhancedWallet } from './hooks/useEnhancedWallet';
 import { useDatasets, type DatasetFilters, type Dataset } from './hooks/useDatasets';
 import { useSimpleSolanaProgram } from './hooks/useSimpleSolanaProgram';
+
+const EnhancedUploadDialog = dynamic(
+  () => import('./components/EnhancedUploadDialog').then((mod) => mod.EnhancedUploadDialog),
+  { ssr: false },
+);
+const PaymentModal = dynamic(
+  () => import('./components/PaymentModal').then((mod) => mod.PaymentModal),
+  { ssr: false },
+);
 
 export default function ModernLandingPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -23,7 +30,7 @@ export default function ModernLandingPage() {
   const [filters, setFilters] = useState<DatasetFilters>({});
   const [currentView, setCurrentView] = useState<'landing' | 'explore'>('landing');
 
-  const { walletState, connectWallet, disconnectWallet } = useEnhancedWallet();
+  const { walletState, connectWallet } = useEnhancedWallet();
   const { datasets, loading, error, refreshDatasets } = useDatasets(filters);
   const { createDataset } = useSimpleSolanaProgram();
 
@@ -225,12 +232,14 @@ export default function ModernLandingPage() {
           />
         )}
 
-        <EnhancedUploadDialog
-          isOpen={showUploadDialog}
-          onClose={() => setShowUploadDialog(false)}
-          onUpload={handleFileUploadAndAnalysis}
-          onSuccess={() => setCurrentView('explore')}
-        />
+        {showUploadDialog && (
+          <EnhancedUploadDialog
+            isOpen={showUploadDialog}
+            onClose={() => setShowUploadDialog(false)}
+            onUpload={handleFileUploadAndAnalysis}
+            onSuccess={() => setCurrentView('explore')}
+          />
+        )}
       </div>
     );
   }
@@ -312,12 +321,14 @@ export default function ModernLandingPage() {
         />
       )}
 
-      <EnhancedUploadDialog
-        isOpen={showUploadDialog}
-        onClose={() => setShowUploadDialog(false)}
-        onUpload={handleFileUploadAndAnalysis}
-        onSuccess={() => setCurrentView('explore')}
-      />
+      {showUploadDialog && (
+        <EnhancedUploadDialog
+          isOpen={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+          onUpload={handleFileUploadAndAnalysis}
+          onSuccess={() => setCurrentView('explore')}
+        />
+      )}
     </div>
   );
 }

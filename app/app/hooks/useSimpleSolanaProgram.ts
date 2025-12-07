@@ -52,8 +52,8 @@ export function useSimpleSolanaProgram() {
         wallet: walletState.publicKey
       });
 
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Keep async boundary without blocking UI
+      await Promise.resolve();
 
       // Return simulated success response
       return {

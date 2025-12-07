@@ -1,29 +1,24 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { Header } from './components/Header';
+import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import { HeroSection } from './components/HeroSection';
-import { SearchSection } from './components/SearchSection';
 import { ProblemSection } from './components/ProblemSection';
 import { SolutionSection } from './components/SolutionSection';
-import { Footer } from './components/Footer';
-import { ProgressIndicator } from './components/ProgressIndicator';
-import { ModernDatasetCard } from './components/ModernDatasetCard';
-import { EnhancedUploadDialog } from './components/EnhancedUploadDialog';
-import { PaymentModal } from './components/PaymentModal';
 import { useEnhancedWallet } from './hooks/useEnhancedWallet';
-import { useDatasets, type DatasetFilters, type Dataset } from './hooks/useDatasets';
+import { useDatasets } from './hooks/useDatasets';
 import { useSimpleSolanaProgram } from './hooks/useSimpleSolanaProgram';
+
+const EnhancedUploadDialog = dynamic(
+  () => import('./components/EnhancedUploadDialog').then((mod) => mod.EnhancedUploadDialog),
+  { ssr: false },
+);
 
 export default function ModernLandingPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
-  const [filters, setFilters] = useState<DatasetFilters>({});
-  const [currentView, setCurrentView] = useState<'landing' | 'explore'>('landing');
 
-  const { walletState, connectWallet, disconnectWallet } = useEnhancedWallet();
-  const { datasets, loading, error, refreshDatasets } = useDatasets(filters);
+  const { walletState, connectWallet } = useEnhancedWallet();
+  const { refreshDatasets } = useDatasets();
   const { createDataset } = useSimpleSolanaProgram();
 
   // Handle upload button click - connect wallet first
@@ -38,23 +33,6 @@ export default function ModernLandingPage() {
 
   const handleExploreClick = () => {
     window.location.href = '/explore';
-  };
-
-  const handleBackToLanding = () => {
-    setCurrentView('landing');
-  };
-
-  const purchaseDataset = (dataset: Dataset) => {
-    setSelectedDataset(dataset);
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    if (selectedDataset) {
-      alert(`Successfully purchased ${selectedDataset.file_name}!`);
-      setShowPaymentModal(false);
-      setSelectedDataset(null);
-    }
   };
 
   const handleFileUploadAndAnalysis = async (file: File, metadata: Record<string, unknown>) => {
@@ -184,23 +162,14 @@ export default function ModernLandingPage() {
       <ProblemSection />
       <SolutionSection />
 
-      {/* Modals */}
-      {showPaymentModal && selectedDataset && (
-        <PaymentModal
-          datasetId={selectedDataset.id}
-          price={selectedDataset.price_lamports}
-          recipientAddress={selectedDataset.contributor_address || '11111111111111111111111111111112'}
-          onSuccess={handlePaymentSuccess}
-          onClose={() => setShowPaymentModal(false)}
+      {showUploadDialog && (
+        <EnhancedUploadDialog
+          isOpen={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+          onUpload={handleFileUploadAndAnalysis}
+          onSuccess={() => {}}
         />
       )}
-
-      <EnhancedUploadDialog
-        isOpen={showUploadDialog}
-        onClose={() => setShowUploadDialog(false)}
-        onUpload={handleFileUploadAndAnalysis}
-        onSuccess={() => setCurrentView('explore')}
-      />
     </div>
   );
 }

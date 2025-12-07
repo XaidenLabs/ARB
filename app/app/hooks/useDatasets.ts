@@ -205,8 +205,8 @@ export function useDatasets(filters: DatasetFilters = {}) {
       setLoading(true);
       setError(null);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Keep async boundary without slowing render
+      await Promise.resolve();
 
       // Combine mock data with user-uploaded data from localStorage
       const userDatasets = typeof window !== 'undefined' 
@@ -290,8 +290,7 @@ export function useDataset(id: string) {
       setLoading(true);
       setError(null);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await Promise.resolve();
 
       const foundDataset = mockDatasets.find(dataset => dataset.id === id);
       

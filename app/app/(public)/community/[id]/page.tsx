@@ -44,6 +44,13 @@ export default function ThreadDetailPage() {
   const [thread, setThread] = useState<Thread | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingThread, setEditingThread] = useState(false);
+  const [threadDraft, setThreadDraft] = useState({
+    title: "",
+    body: "",
+    topic: "introductions" as Topic,
+  });
+  const [savingThread, setSavingThread] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [liking, setLiking] = useState(false);
   const [postingReply, setPostingReply] = useState(false);
@@ -88,6 +95,69 @@ export default function ThreadDetailPage() {
       return;
     }
     setReplies(json.replies || []);
+  };
+
+  const startEditThread = () => {
+    if (!thread) return;
+    setThreadDraft({
+      title: thread.title,
+      body: thread.body,
+      topic: thread.topic,
+    });
+    setEditingThread(true);
+  };
+
+  const cancelEditThread = () => {
+    setEditingThread(false);
+    setThreadDraft({ title: "", body: "", topic: "introductions" });
+  };
+
+  const saveThreadEdit = async () => {
+    const token = (nextAuthSession as any)?.supabaseAccessToken;
+    if (!token || !thread) {
+      toast.error("Sign in to edit.");
+      return;
+    }
+    const title = threadDraft.title.trim();
+    const body = threadDraft.body.trim();
+    if (!title || !body) {
+      toast.error("Add a title and message.");
+      return;
+    }
+    setSavingThread(true);
+    try {
+      const res = await fetch(`/api/community/threads/${thread.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          body,
+          topic: threadDraft.topic,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.thread)
+        throw new Error(json.error || "Failed to update thread");
+      setThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...json.thread,
+              liked_by_me: prev.liked_by_me,
+            }
+          : prev
+      );
+      toast.success("Thread updated.");
+      setEditingThread(false);
+    } catch (err) {
+      console.error("Update thread error:", err);
+      toast.error((err as any)?.message || "Could not update thread.");
+    } finally {
+      setSavingThread(false);
+    }
   };
 
   const toggleLike = async () => {
@@ -216,11 +286,12 @@ export default function ThreadDetailPage() {
   };
 
   const topicLabel = useMemo(() => {
-    if (!thread) return "";
-    if (thread.topic === "introductions") return "Introduction";
-    if (thread.topic === "projects") return "Project";
+    const topic = editingThread ? threadDraft.topic : thread?.topic;
+    if (!topic) return "";
+    if (topic === "introductions") return "Introduction";
+    if (topic === "projects") return "Project";
     return "Collab request";
-  }, [thread]);
+  }, [editingThread, thread, threadDraft.topic]);
 
   if (loading || !thread) {
     return (
@@ -245,8 +316,42 @@ export default function ThreadDetailPage() {
             <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">{topicLabel}</span>
             <span>{new Date(thread.created_at).toLocaleString()}</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{thread.title}</h1>
-          <p className="text-gray-700">{thread.body}</p>
+          {editingThread ? (
+            <div className="space-y-3">
+              <input
+                value={threadDraft.title}
+                onChange={(e) => setThreadDraft((p) => ({ ...p, title: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Title"
+              />
+              <textarea
+                value={threadDraft.body}
+                onChange={(e) => setThreadDraft((p) => ({ ...p, body: e.target.value }))}
+                rows={4}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Share your update..."
+              />
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span className="font-semibold text-gray-700">Topic:</span>
+                <select
+                  value={threadDraft.topic}
+                  onChange={(e) =>
+                    setThreadDraft((p) => ({ ...p, topic: e.target.value as Topic }))
+                  }
+                  className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="introductions">Introduction</option>
+                  <option value="projects">Project</option>
+                  <option value="collaboration">Collab request</option>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-gray-900">{thread.title}</h1>
+              <p className="text-gray-700">{thread.body}</p>
+            </>
+          )}
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
             <span className="inline-flex items-center gap-1">
               <Users className="w-4 h-4" /> {thread.author?.full_name || "Member"}
@@ -263,13 +368,44 @@ export default function ThreadDetailPage() {
               {thread.likes_count || 0} reactions
             </button>
             {thread.user_id === (nextAuthSession as any)?.user?.id && (
-              <button
-                type="button"
-                onClick={deleteThread}
-                className="inline-flex items-center gap-1 text-red-600"
-              >
-                <Trash2 className="w-4 h-4" /> Delete thread
-              </button>
+              <div className="flex items-center gap-2">
+                {editingThread ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={saveThreadEdit}
+                      disabled={savingThread}
+                      className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1 text-white"
+                    >
+                      {savingThread ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEditThread}
+                      className="inline-flex items-center gap-1 rounded border px-3 py-1 text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={startEditThread}
+                      className="inline-flex items-center gap-1 text-blue-700"
+                    >
+                      Edit thread
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deleteThread}
+                      className="inline-flex items-center gap-1 text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete thread
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
