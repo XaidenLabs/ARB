@@ -33,6 +33,9 @@ const loadKeypair = (secret: string) => {
 
 async function main() {
   const connection = new Connection(RPC, "confirmed");
+  if (!TREASURY) {
+    throw new Error("Missing ARB_TREASURY_PRIVATE_KEY env var (JSON array secret key).");
+  }
   const treasury = loadKeypair(TREASURY);
 
   const mintAmountInput = Number(process.argv[2] || 1_000_000);

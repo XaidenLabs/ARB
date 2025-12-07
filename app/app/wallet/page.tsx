@@ -30,10 +30,12 @@ interface WalletOverview {
   transactions: Array<{
     id: string;
     points: number;
-    transaction_type: string;
+    transaction_type?: string;
+    action?: string;
+    type?: string | null;
     description: string | null;
     created_at: string;
-    metadata: any;
+    metadata?: any;
   }>;
   rewardRates: Record<string, number>;
 }
@@ -400,7 +402,7 @@ export default function WalletPage() {
                           </span>
                         </td>
                         <td className="py-3 pr-4 capitalize text-gray-900">
-                          {((tx as any).transaction_type || tx.action || "transaction").replace(/_/g, " ")}
+                          {((tx as any).transaction_type || tx.action || tx.type || "transaction").replace(/_/g, " ")}
                         </td>
                         <td className="py-3 pr-4 text-gray-700">
                           {tx.description || "—"}
