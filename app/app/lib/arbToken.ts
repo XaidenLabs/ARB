@@ -8,8 +8,14 @@ import {
 } from '@solana/spl-token';
 
 // $ARB Token Details
-export const ARB_TOKEN_MINT = new PublicKey('BUd49N8cqwj4q7NHPSKWJM4iqgjs3pck98rZKhYgpb4x');
-export const ARB_DECIMALS = 6; // Standard SPL token decimals
+const DEFAULT_ARB_MINT = 'BUd49N8cqwj4q7NHPSKWJM4iqgjs3pck98rZKhYgpb4x';
+const mintAddress =
+  process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS && process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS.length > 0
+    ? process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS
+    : DEFAULT_ARB_MINT;
+
+export const ARB_TOKEN_MINT = new PublicKey(mintAddress);
+export const ARB_DECIMALS = Number(process.env.NEXT_PUBLIC_ARB_DECIMALS || 6); // Standard SPL token decimals
 
 // Treasury wallet that holds $ARB tokens for distribution
 // You'll need to fund this wallet with $ARB tokens
@@ -161,16 +167,58 @@ export class ARBTokenService {
    */
   async getTokenBalance(userPublicKey: PublicKey): Promise<number> {
     try {
-      const tokenAccount = await getAssociatedTokenAddress(
-        ARB_TOKEN_MINT,
-        userPublicKey
-      );
+      const tokenAccount = await this.ensureTokenAccount(userPublicKey);
+      if (!tokenAccount) return 0;
 
       const accountInfo = await getAccount(this.connection, tokenAccount);
       return this.fromTokenAmount(Number(accountInfo.amount));
     } catch (error) {
       console.log('No token account found or error:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Ensure ATA exists; create it (paid by treasury) if missing.
+   */
+  private async ensureTokenAccount(userPublicKey: PublicKey): Promise<PublicKey | null> {
+    const associatedTokenAddress = await getAssociatedTokenAddress(
+      ARB_TOKEN_MINT,
+      userPublicKey
+    );
+
+    try {
+      await getAccount(this.connection, associatedTokenAddress);
+      return associatedTokenAddress;
+    } catch (error) {
+      if (!this.treasuryKeypair) {
+        console.warn('Treasury keypair missing; cannot create ATA for', userPublicKey.toBase58());
+        return null;
+      }
+
+      try {
+        const transaction = new Transaction().add(
+          createAssociatedTokenAccountInstruction(
+            this.treasuryKeypair.publicKey, // payer
+            associatedTokenAddress,
+            userPublicKey,
+            ARB_TOKEN_MINT
+          )
+        );
+
+        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = this.treasuryKeypair.publicKey;
+
+        transaction.sign(this.treasuryKeypair);
+        const signature = await this.connection.sendRawTransaction(transaction.serialize());
+        await this.connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+
+        return associatedTokenAddress;
+      } catch (creationError) {
+        console.error('Failed to create associated token account:', creationError);
+        return null;
+      }
     }
   }
 
