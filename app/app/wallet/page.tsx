@@ -358,38 +358,84 @@ export default function WalletPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
           <div className="flex items-center gap-2">
             <ArrowUpCircle className="w-5 h-5 text-purple-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Recent activity</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Transaction history</h3>
+            <div className="ml-auto">
+              <Link
+                href="/wallet/history"
+                className="text-sm text-blue-600 hover:underline font-medium"
+              >
+                View more
+              </Link>
+            </div>
           </div>
           {overview?.transactions?.length ? (
-            <div className="divide-y divide-gray-100">
-              {overview.transactions.map((tx) => (
-                <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">
-                      {tx.description || tx.transaction_type.replace(/_/g, " ")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(tx.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-gray-900">
-                      {tx.points} $ARB
-                    </div>
-                    <div className="text-xs text-gray-600 capitalize">
-                      {tx.transaction_type}
-                    </div>
-                    {tx.metadata?.transaction_signature && (
-                      <Link
-                        href={`https://explorer.solana.com/tx/${tx.metadata.transaction_signature}?cluster=devnet`}
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        View Tx <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-gray-700">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 pr-4">Type</th>
+                    <th className="py-2 pr-4">Description</th>
+                    <th className="py-2 pr-4 text-right">Amount</th>
+                    <th className="py-2 pr-4 text-right">Status</th>
+                    <th className="py-2 pr-4 text-right">Tx</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {overview.transactions.slice(0, 4).map((tx) => {
+                    const signature = (tx as any).metadata?.transaction_signature;
+                    const tokenTransferred = (tx as any).metadata?.token_transferred;
+                    const status = signature
+                      ? "Confirmed"
+                      : tokenTransferred === false
+                      ? "Pending retry"
+                      : "Recorded";
+
+                    return (
+                      <tr key={tx.id}>
+                        <td className="py-3 pr-4 text-gray-900">
+                          {new Date(tx.created_at).toLocaleDateString()}{" "}
+                          <span className="text-xs text-gray-500">
+                            {new Date(tx.created_at).toLocaleTimeString()}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 capitalize text-gray-900">
+                          {((tx as any).transaction_type || tx.action || "transaction").replace(/_/g, " ")}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-700">
+                          {tx.description || "—"}
+                        </td>
+                        <td className="py-3 pr-4 text-right font-semibold text-gray-900">
+                          {tx.points} $ARB
+                        </td>
+                        <td className="py-3 pr-4 text-right">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                              signature
+                                ? "bg-green-50 text-green-700 border border-green-100"
+                                : "bg-amber-50 text-amber-700 border border-amber-100"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-right">
+                          {signature ? (
+                            <Link
+                              href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                            >
+                              View <ExternalLink className="w-4 h-4" />
+                            </Link>
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-sm text-gray-500 flex items-center gap-2">

@@ -38,12 +38,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const url = new URL(req.url);
+    const limitParam = Number(url.searchParams.get("limit") || 20);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 20;
+
     const { data: transactions } = await supabaseServer
       .from("points_transactions")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(limit);
 
     return NextResponse.json({
       success: true,
@@ -127,15 +131,11 @@ export async function POST(req: NextRequest) {
 
     const { error: txError } = await supabaseServer.from("points_transactions").insert({
       user_id: user.id,
-      points: amount,
-      transaction_type: "withdrawal",
-      dataset_id: null,
-      review_id: null,
+      points: -amount, // reflect deduction
+      action: "manual", // closest allowed action; type carries withdrawal label
+      type: "withdrawal",
       description,
-      metadata: {
-        wallet_address: profile.wallet_address,
-        transaction_signature: signature,
-      },
+      reference_id: null
     });
     if (txError) console.warn("Failed to log withdrawal transaction:", txError);
 

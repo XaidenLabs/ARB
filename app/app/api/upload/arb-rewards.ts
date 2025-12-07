@@ -83,17 +83,10 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         points: totalReward,
-        transaction_type: 'dataset_upload',
-        dataset_id: datasetId,
-        description: `Uploaded dataset: ${fileName || datasetId}`,
-        metadata: {
-          quality_score: qualityScore,
-          file_size: fileSize,
-          bonuses,
-          token_transferred: tokenTransferSuccess,
-          transaction_signature: transactionSignature,
-          wallet_address: userProfile.wallet_address
-        }
+        action: 'upload',
+        type: 'dataset_upload',
+        reference_id: datasetId,
+        description: `Uploaded dataset: ${fileName || datasetId}`
       });
 
     if (txError) {

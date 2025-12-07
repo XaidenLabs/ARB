@@ -8,10 +8,11 @@ import { createClient } from '@/lib/supabase';
 interface Transaction {
   id: string;
   points: number;
-  transaction_type: string;
+  action: string;
+  type?: string | null;
   description: string;
   created_at: string;
-  metadata: any;
+  metadata?: any;
 }
 
 interface Stats {
@@ -111,12 +112,16 @@ export default function PointsDashboard({ userId }: PointsDashboardProps) {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
+      case 'signup':
       case 'signup_bonus':
         return <Sparkles className="w-5 h-5 text-yellow-500" />;
+      case 'upload':
       case 'dataset_upload':
         return <Upload className="w-5 h-5 text-blue-500" />;
+      case 'review':
       case 'review_submitted':
         return <Eye className="w-5 h-5 text-purple-500" />;
+      case 'verification':
       case 'dataset_verification':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       default:
@@ -133,7 +138,8 @@ export default function PointsDashboard({ userId }: PointsDashboardProps) {
     });
   };
 
-  const formatTransactionType = (type: string) => {
+  const formatTransactionType = (type: string | null | undefined) => {
+    if (!type) return 'Activity';
     return type
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -299,11 +305,11 @@ export default function PointsDashboard({ userId }: PointsDashboardProps) {
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center space-x-4">
-                  {getTransactionIcon(tx.transaction_type)}
+                  {getTransactionIcon(tx.type || tx.action)}
                   <div>
                     <p className="font-medium text-gray-900">{tx.description}</p>
                     <p className="text-sm text-gray-500">
-                      {formatTransactionType(tx.transaction_type)} • {formatDate(tx.created_at)}
+                      {formatTransactionType(tx.type || tx.action)} • {formatDate(tx.created_at)}
                     </p>
                   </div>
                 </div>
