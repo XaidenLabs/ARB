@@ -129,7 +129,7 @@ export default function AboutPage() {
                 />
               </div>
               <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Emmanuel</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Alfred</h3>
                 <p className="text-blue-600 font-medium mb-3">Fullstack & Blockhain Dev</p>
                 <p className="text-gray-600 text-sm leading-relaxed">
                   Technical architect behind our AI-powered platform. Expert in blockchain development
