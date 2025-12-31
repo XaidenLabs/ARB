@@ -192,9 +192,8 @@ export default function ExplorePage() {
       {Array.from({ length: 5 }, (_, i) => (
         <Star
           key={i}
-          className={`w-5 h-5 ${interactive ? "cursor-pointer" : ""} ${
-            i < value ? "text-yellow-400 fill-current" : "text-gray-300"
-          }`}
+          className={`w-5 h-5 ${interactive ? "cursor-pointer" : ""} ${i < value ? "text-yellow-400 fill-current" : "text-gray-300"
+            }`}
           onClick={interactive ? () => setRating(i + 1) : undefined}
         />
       ))}
@@ -296,7 +295,7 @@ export default function ExplorePage() {
    * ==============================================
    */
   const DatasetCard = ({ dataset }: { dataset: Dataset }) => {
-    const score = dataset.ai_confidence_score || 75;
+    const score = dataset.ai_confidence_score ?? 0;
     const starValue = Math.round(score / 20);
 
     return (
@@ -389,7 +388,7 @@ export default function ExplorePage() {
    * ==============================================
    */
   const DatasetDetail = ({ dataset }: { dataset: Dataset }) => {
-    const score = dataset.ai_confidence_score || 75;
+    const score = dataset.ai_confidence_score ?? 0;
     const starValue = Math.round(score / 20);
 
     return (
