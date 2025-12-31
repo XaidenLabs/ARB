@@ -242,8 +242,14 @@ export default function WalletPage() {
 
       // 3. Get Token Accounts
       // Fetch Mint Info to determine Program ID (Token or Token-2022)
+      console.log("Fetching mint info for:", ARB_MINT.toBase58());
       const mintInfo = await connection.getAccountInfo(ARB_MINT);
-      const tokenProgramId = mintInfo?.owner || TOKEN_PROGRAM_ID;
+
+      if (!mintInfo) {
+        throw new Error("Could not fetch ARB Mint info. Check your network connection (Devnet required).");
+      }
+
+      const tokenProgramId = mintInfo.owner;
       console.log("Resolved Token Program ID:", tokenProgramId.toBase58());
 
       // Reward Vault (Owned by vault_authority)
@@ -276,7 +282,7 @@ export default function WalletPage() {
 
       if (!userAtaInfo) {
         console.log("User ATA missing, adding create instruction...");
-        toast.loading("Adding account creation (you pay rent)...", { id: toastId });
+        toast.loading(`Creating ${tokenProgramId.equals(TOKEN_PROGRAM_ID) ? 'Token' : 'Token-2022'} Account...`, { id: toastId });
         preInstructions.push(
           createAssociatedTokenAccountInstruction(
             anchorWallet.publicKey, // payer
@@ -302,7 +308,7 @@ export default function WalletPage() {
           rewardVault: rewardVault,
           userTokenAccount: userTokenAccount,
           vaultAuthority: vaultAuthorityPda,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenProgram: tokenProgramId, // <--- Key Fix: Use dynamic program ID
         })
         .preInstructions(preInstructions)
         .rpc();
