@@ -241,17 +241,25 @@ export default function WalletPage() {
       );
 
       // 3. Get Token Accounts
+      // Fetch Mint Info to determine Program ID (Token or Token-2022)
+      const mintInfo = await connection.getAccountInfo(ARB_MINT);
+      const tokenProgramId = mintInfo?.owner || TOKEN_PROGRAM_ID;
+      console.log("Resolved Token Program ID:", tokenProgramId.toBase58());
+
       // Reward Vault (Owned by vault_authority)
       const rewardVault = await getAssociatedTokenAddress(
         ARB_MINT,
         vaultAuthorityPda,
-        true // allowOwnerOffCurve = true for PDAs
+        true, // allowOwnerOffCurve = true for PDAs
+        tokenProgramId
       );
 
       // User Token Account
       const userTokenAccount = await getAssociatedTokenAddress(
         ARB_MINT,
-        anchorWallet.publicKey
+        anchorWallet.publicKey,
+        false,
+        tokenProgramId
       );
 
       console.log("PDAs Derived:", {
@@ -262,6 +270,7 @@ export default function WalletPage() {
       });
 
       // CHECK IF USER ATA EXISTS
+      // We must pass the correct programId to getAccount as well
       const userAtaInfo = await connection.getAccountInfo(userTokenAccount);
       const preInstructions: TransactionInstruction[] = [];
 
@@ -273,7 +282,8 @@ export default function WalletPage() {
             anchorWallet.publicKey, // payer
             userTokenAccount,       // ata
             anchorWallet.publicKey, // owner
-            ARB_MINT                // mint
+            ARB_MINT,               // mint
+            tokenProgramId          // programId
           )
         );
       }
