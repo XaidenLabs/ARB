@@ -21,19 +21,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { 
       datasetId, 
-      qualityScore, 
-      fileSize,
       fileName 
     } = body;
 
-    if (!datasetId || qualityScore === undefined) {
+    if (!datasetId) {
       return NextResponse.json(
-        { error: 'Dataset ID and quality score are required' },
+        { error: 'Dataset ID is required' },
         { status: 400 }
       );
     }
 
-    console.log(`Processing upload rewards for dataset: ${datasetId}, Quality: ${qualityScore}`);
+    // 🔹 Securely fetch dataset status & score from DB (DO NOT TRUST CLIENT SCORE)
+    const { data: dataset, error: datasetError } = await supabaseServer!
+      .from('datasets')
+      .select('status, ai_confidence_score, uploader_id')
+      .eq('id', datasetId)
+      .single();
+
+    if (datasetError || !dataset) {
+      return NextResponse.json({ error: 'Dataset not found' }, { status: 404 });
+    }
+
+    // Security Check: Verify ownership
+    if (dataset.uploader_id !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized: Dataset ownership mismatch' }, { status: 403 });
+    }
+
+    // Security Check: Status verification
+    if (dataset.status === 'rejected') {
+      console.warn(`⛔ Blocked reward for rejected/spam dataset: ${datasetId}`);
+      return NextResponse.json({ 
+        success: false, 
+        error: "Reward blocked: Dataset marked as low quality or spam by AI.",
+        rewardsEarned: 0 
+      }, { status: 400 });
+    }
+
+    // Use TRUSTED score from DB
+    const qualityScore = dataset.ai_confidence_score || 0;
+
+    console.log(`Processing upload rewards for dataset: ${datasetId}, Trusted Score: ${qualityScore}`);
 
     // Get user's wallet address
     const { data: userProfile } = await supabaseServer!

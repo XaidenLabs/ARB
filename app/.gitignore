@@ -54,3 +54,4 @@ tmp/
 
 
 yarn.lock
+.env*.local

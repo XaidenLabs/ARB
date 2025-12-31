@@ -1,6 +1,6 @@
 "use client";
 
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useState, useEffect, useCallback } from 'react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
@@ -16,6 +16,7 @@ export interface EnhancedWalletState {
 export function useEnhancedWallet() {
   const { connection } = useConnection();
   const { publicKey, connected, connecting, disconnect, wallet, connect } = useWallet();
+  const anchorWallet = useAnchorWallet();
   const { setVisible } = useWalletModal();
   const [balance, setBalance] = useState<number | null>(null);
 
@@ -77,6 +78,7 @@ export function useEnhancedWallet() {
     connectWallet,
     disconnectWallet,
     fetchBalance,
-    connection
+    connection,
+    anchorWallet
   };
 }

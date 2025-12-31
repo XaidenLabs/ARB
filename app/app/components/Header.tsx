@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -38,9 +39,36 @@ export function Header({ onUploadClick }: HeaderProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
+  const searchParams = useSearchParams();
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const supabase = useMemo(() => createClient(), []);
+
+  const router = useRouter(); // You need to import useRouter from "next/navigation"
+
+  // Open modal based on URL query params
+  // Open modal based on URL query params
+  useEffect(() => {
+    // Wait for auth check to complete
+    if (status === "loading") return;
+
+    if (session) {
+      // If logged in, close modals just in case
+      setIsSignInModalOpen(false);
+      setIsSignUpModalOpen(false);
+
+      // If logged in, ignore auth params and clean URL
+      if (searchParams.get("auth") || searchParams.get("redirect")) {
+        const newUrl = searchParams.get("redirect") || "/dashboard";
+        router.replace(newUrl);
+      }
+      return;
+    }
+
+    const authParam = searchParams.get("auth");
+    if (authParam === "signin") setIsSignInModalOpen(true);
+    if (authParam === "signup") setIsSignUpModalOpen(true);
+  }, [searchParams, session, status, router]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -107,8 +135,8 @@ export function Header({ onUploadClick }: HeaderProps) {
     session?.user?.role === "reviewer"
       ? "Reviewer"
       : session?.user?.role === "admin"
-      ? "Admin"
-      : "Contributor";
+        ? "Admin"
+        : "Contributor";
 
   return (
     <>
@@ -321,6 +349,7 @@ export function Header({ onUploadClick }: HeaderProps) {
             setIsSignInModalOpen(false);
             setIsSignUpModalOpen(true);
           }}
+          redirectUrl={searchParams.get("redirect") || undefined}
         />
       )}
       {isSignUpModalOpen && (

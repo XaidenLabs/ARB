@@ -112,7 +112,7 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
@@ -255,11 +255,10 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                           return (
                             <div
                               key={level}
-                              className={`h-1 flex-1 rounded-full transition-colors ${
-                                isActive
-                                  ? checks <= 2 ? 'bg-red-500' : checks <= 3 ? 'bg-yellow-500' : 'bg-green-500'
-                                  : 'bg-gray-200'
-                              }`}
+                              className={`h-1 flex-1 rounded-full transition-colors ${isActive
+                                ? checks <= 2 ? 'bg-red-500' : checks <= 3 ? 'bg-yellow-500' : 'bg-green-500'
+                                : 'bg-gray-200'
+                                }`}
                             />
                           );
                         })}
@@ -273,11 +272,10 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                           { key: 'hasSpecial', label: 'One special character (!@#$...)' },
                         ].map(({ key, label }) => (
                           <div key={key} className="flex items-center text-xs">
-                            <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${
-                              passwordStrength[key as keyof typeof passwordStrength]
-                                ? 'bg-green-500'
-                                : 'bg-gray-300'
-                            }`}>
+                            <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center ${passwordStrength[key as keyof typeof passwordStrength]
+                              ? 'bg-green-500'
+                              : 'bg-gray-300'
+                              }`}>
                               {passwordStrength[key as keyof typeof passwordStrength] && (
                                 <CheckCircle2 className="w-3 h-3 text-white" />
                               )}
@@ -308,11 +306,10 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
                         type="button"
                         disabled={isLoading}
                         onClick={() => setRoleSelection(option.value as typeof roleSelection)}
-                        className={`text-left p-3 rounded-xl border transition ${
-                          roleSelection === option.value
-                            ? 'border-blue-500 bg-blue-50 shadow-sm'
-                            : 'border-gray-200 hover:border-blue-200'
-                        }`}
+                        className={`text-left p-3 rounded-xl border transition ${roleSelection === option.value
+                          ? 'border-blue-500 bg-blue-50 shadow-sm'
+                          : 'border-gray-200 hover:border-blue-200'
+                          }`}
                       >
                         <div className="font-semibold text-gray-900 text-sm">{option.label}</div>
                         <div className="text-xs text-gray-600 mt-1">{option.desc}</div>
@@ -430,4 +427,4 @@ export function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalPro
     </div>
   );
 }
- 
+

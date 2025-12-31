@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
   Wallet as WalletIcon,
@@ -12,10 +13,80 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { useEnhancedWallet } from "../hooks/useEnhancedWallet";
+import { Program, AnchorProvider } from "@coral-xyz/anchor";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
+
+
+// Constants
+const ARB_MINT = new PublicKey("D7ao8w8yjmjMWDfNzgt7J1uVP6qa3JNiRndkoXncyai");
+const PROGRAM_ID = new PublicKey("EAo3vy4cYj9ezXbkZRwWkhUnNCjiBcF2qp8vwXwNsPPD");
+
+// Minimal IDL for Withdrawals
+const REDEEM_IDL: any = {
+  "address": "EAo3vy4cYj9ezXbkZRwWkhUnNCjiBcF2qp8vwXwNsPPD",
+  "metadata": {
+    "name": "africa_research_base",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "redeem_points",
+      "discriminator": [200, 100, 50, 20, 10, 5, 2, 3],
+      "accounts": [
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "reputation", "writable": true, "pda": { "seeds": [{ "kind": "const", "value": [114, 101, 112, 117, 116, 97, 116, 105, 111, 110] }, { "kind": "account", "path": "user" }] } },
+        { "name": "reward_vault", "writable": true },
+        { "name": "user_token_account", "writable": true },
+        { "name": "vault_authority", "pda": { "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121] }] } },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Reputation",
+      "discriminator": [55, 148, 90, 71, 68, 183, 193, 28]
+    }
+  ],
+  "types": [
+    {
+      "name": "Reputation",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "contributor", "type": "pubkey" },
+          { "name": "total_uploads", "type": "u32" },
+          { "name": "dataset_count", "type": "u32" },
+          { "name": "download_time", "type": "i64" },
+          { "name": "total_quality_score", "type": "u64" },
+          { "name": "total_downloads", "type": "u64" },
+          { "name": "total_citations", "type": "u32" },
+          { "name": "reputation_score", "type": "u32" },
+          { "name": "total_reviews", "type": "u64" },
+          { "name": "last_activity_timestamp", "type": "i64" },
+          { "name": "daily_activity_points", "type": "u32" },
+          { "name": "total_upload_points", "type": "u64" },
+          { "name": "total_review_points", "type": "u64" },
+          { "name": "total_activity_points", "type": "u64" },
+          { "name": "claimed_points", "type": "u64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    }
+  ]
+};
 
 interface WalletOverview {
   balances: {
@@ -42,7 +113,7 @@ interface WalletOverview {
 
 export default function WalletPage() {
   const { data: nextAuthSession, status } = useSession();
-  const { walletState, connectWallet, disconnectWallet, fetchBalance } = useEnhancedWallet();
+  const { walletState, connectWallet, disconnectWallet, fetchBalance, anchorWallet, connection } = useEnhancedWallet();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -54,7 +125,6 @@ export default function WalletPage() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [nextAuthSession]);
 
-  // Ensure Supabase client has the same session as NextAuth for RLS updates
   useEffect(() => {
     const syncSession = async () => {
       try {
@@ -92,9 +162,14 @@ export default function WalletPage() {
       if (!res.ok) throw new Error(json.error || "Failed to load wallet");
       setOverview(json);
       await fetchBalance();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Wallet load error:", err);
-      toast.error((err as any)?.message || "Could not load wallet data.");
+      // Handle unauthorized explicitly
+      if (err.message?.includes("401") || err.message?.includes("Unauthorized")) {
+        await signOut({ callbackUrl: "/" });
+        return;
+      }
+      toast.error(err.message || "Could not load wallet data.");
     } finally {
       setLoading(false);
     }
@@ -136,53 +211,142 @@ export default function WalletPage() {
       toast.error("Sign in to withdraw.");
       return;
     }
+    if (!anchorWallet) {
+      toast.error("Connect your Solana wallet to withdraw.");
+      connectWallet();
+      return;
+    }
+
     setWithdrawing(true);
+    const toastId = toast.loading("Initializing withdrawal...");
+
     try {
-      const res = await fetch("/api/wallet", {
+      // 1. Setup Anchor Provider
+      const provider = new AnchorProvider(connection, anchorWallet, {
+        preflightCommitment: "confirmed",
+      });
+
+      // Use minimal IDL to avoid crashes
+      const program = new Program(REDEEM_IDL, provider);
+
+      // 2. Derive PDAs
+      const [reputationPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("reputation"), anchorWallet.publicKey.toBuffer()],
+        PROGRAM_ID
+      );
+
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_authority")],
+        PROGRAM_ID
+      );
+
+      // 3. Get Token Accounts
+      // Reward Vault (Owned by vault_authority)
+      const rewardVault = await getAssociatedTokenAddress(
+        ARB_MINT,
+        vaultAuthorityPda,
+        true // allowOwnerOffCurve = true for PDAs
+      );
+
+      // User Token Account
+      const userTokenAccount = await getAssociatedTokenAddress(
+        ARB_MINT,
+        anchorWallet.publicKey
+      );
+
+      console.log("PDAs Derived:", {
+        reputation: reputationPda.toBase58(),
+        vaultAuthority: vaultAuthorityPda.toBase58(),
+        rewardVault: rewardVault.toBase58(),
+        userTokenAccount: userTokenAccount.toBase58(),
+      });
+
+      // CHECK IF USER ATA EXISTS
+      const userAtaInfo = await connection.getAccountInfo(userTokenAccount);
+      const preInstructions: TransactionInstruction[] = [];
+
+      if (!userAtaInfo) {
+        console.log("User ATA missing, adding create instruction...");
+        toast.loading("Adding account creation (you pay rent)...", { id: toastId });
+        preInstructions.push(
+          createAssociatedTokenAccountInstruction(
+            anchorWallet.publicKey, // payer
+            userTokenAccount,       // ata
+            anchorWallet.publicKey, // owner
+            ARB_MINT                // mint
+          )
+        );
+      }
+
+      if (amount > (overview?.balances.points ?? 0)) {
+        throw new Error("Withdrawal amount exceeds available points.");
+      }
+
+      toast.loading("Please sign the transaction...", { id: toastId });
+
+      const tx = await program.methods
+        .redeemPoints()
+        .accounts({
+          user: anchorWallet.publicKey,
+          reputation: reputationPda,
+          rewardVault: rewardVault,
+          userTokenAccount: userTokenAccount,
+          vaultAuthority: vaultAuthorityPda,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .preInstructions(preInstructions)
+        .rpc();
+
+      console.log("Transaction Signature:", tx);
+
+      // 5. Record Transaction on Backend
+      toast.loading("Confirming transaction...", { id: toastId });
+
+      await fetch("/api/wallet", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({
+          amount, // Log the amount they engaged with (or max)
+          txSignature: tx,
+          description: `Redemption of ${amount} Points for ARB`
+        }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Withdrawal failed");
-      toast.success("Withdrawal submitted to Solana.");
+
+      toast.success(`Successfully withdrew ARB! Tx: ${tx.slice(0, 8)}...`, { id: toastId });
       setWithdrawAmount("");
-      await loadWalletData();
-    } catch (err) {
+      await loadWalletData(); // Refresh DB stats
+      await fetchBalance();   // Refresh Solana balance
+
+    } catch (err: any) {
       console.error("Withdraw error:", err);
-      toast.error((err as any)?.message || "Could not withdraw.");
+      const isCancelled = err.message?.includes("User rejected") || err.name === "WalletSignTransactionError";
+
+      if (isCancelled) {
+        toast.error("Transaction cancelled", { id: toastId });
+      } else {
+        toast.error(err.message || "Withdrawal failed.", { id: toastId });
+      }
     } finally {
       setWithdrawing(false);
     }
   };
 
-  if (status === "loading" || loading) {
+  if (status === "unauthenticated") {
+    // Client-side redirect to home with auth param
+    window.location.href = `/?auth=signin&redirect=${encodeURIComponent("/wallet")}`;
+    return null;
+  }
+
+  // Fallback for NextAuth loading state
+  if (status === "loading" || loading || !nextAuthSession?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading wallet...
+        <Loader2 className="w-6 h-6 animate-spin mr-2" />
+        Loading...
       </div>
     );
   }
 
-  if (!nextAuthSession?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm space-y-3">
-          <WalletIcon className="w-10 h-10 text-blue-600 mx-auto" />
-          <h2 className="text-xl font-semibold text-gray-900">Sign in to view your wallet</h2>
-          <p className="text-gray-600 text-sm">Track ARB points, on-chain tokens, and withdraw securely.</p>
-          <div className="flex justify-center gap-3 pt-2">
-            <Link href="/community" className="px-4 py-2 rounded-lg border text-gray-700">
-              Community
-            </Link>
-            <Link href="/" className="px-4 py-2 rounded-lg bg-blue-600 text-white">
-              Home
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -307,13 +471,12 @@ export default function WalletPage() {
                 <button
                   key={preset}
                   onClick={() => setWithdrawAmount(String(preset))}
-                  className={`px-3 py-2 rounded-lg border text-sm ${
-                    Number(withdrawAmount) === preset
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 text-gray-700 hover:border-blue-200"
-                  }`}
+                  className={`px-3 py-2 rounded-lg border text-sm ${Number(withdrawAmount) === preset
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-200 text-gray-700 hover:border-blue-200"
+                    }`}
                 >
-                  {preset} $ARB
+                  {preset} Points
                 </button>
               ))}
             </div>
@@ -323,7 +486,7 @@ export default function WalletPage() {
                 min="1"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                placeholder="Enter amount"
+                placeholder="Enter points amount"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -331,7 +494,7 @@ export default function WalletPage() {
                 disabled={withdrawing}
                 className="sm:w-40 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
               >
-                {withdrawing ? "Withdrawing..." : "Withdraw"}
+                {withdrawing ? "Processing..." : "Withdraw"}
               </button>
             </div>
             <div className="text-xs text-gray-500">
@@ -349,7 +512,7 @@ export default function WalletPage() {
                 Object.entries(overview.rewardRates).map(([label, value]) => (
                   <li key={label} className="flex items-center justify-between">
                     <span className="capitalize">{label.replace(/_/g, " ").toLowerCase()}</span>
-                    <span className="font-semibold text-gray-900">{value} $ARB</span>
+                    <span className="font-semibold text-gray-900">{value} Points</span>
                   </li>
                 ))}
             </ul>
@@ -385,13 +548,13 @@ export default function WalletPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {overview.transactions.slice(0, 4).map((tx) => {
-                    const signature = (tx as any).metadata?.transaction_signature;
+                    const signature = (tx as any).metadata?.transaction_signature || (tx as any).metadata?.txSignature;
                     const tokenTransferred = (tx as any).metadata?.token_transferred;
                     const status = signature
                       ? "Confirmed"
                       : tokenTransferred === false
-                      ? "Pending retry"
-                      : "Recorded";
+                        ? "Pending retry"
+                        : "Recorded";
 
                     return (
                       <tr key={tx.id}>
@@ -408,15 +571,14 @@ export default function WalletPage() {
                           {tx.description || "—"}
                         </td>
                         <td className="py-3 pr-4 text-right font-semibold text-gray-900">
-                          {tx.points} $ARB
+                          {tx.points} Pts
                         </td>
                         <td className="py-3 pr-4 text-right">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                              signature
-                                ? "bg-green-50 text-green-700 border border-green-100"
-                                : "bg-amber-50 text-amber-700 border border-amber-100"
-                            }`}
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${signature
+                              ? "bg-green-50 text-green-700 border border-green-100"
+                              : "bg-amber-50 text-amber-700 border border-amber-100"
+                              }`}
                           >
                             {status}
                           </span>
@@ -425,6 +587,7 @@ export default function WalletPage() {
                           {signature ? (
                             <Link
                               href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`}
+                              target="_blank"
                               className="inline-flex items-center gap-1 text-blue-600 hover:underline"
                             >
                               View <ExternalLink className="w-4 h-4" />
@@ -456,7 +619,7 @@ export default function WalletPage() {
           </div>
           <div className="flex gap-2">
             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/10 text-sm">
-              <CheckCircle2 className="w-4 h-4" /> Solana Devnet
+              <CheckCircle2 className="w-4 h-4" /> Solana Safe
             </span>
             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/10 text-sm">
               <WalletIcon className="w-4 h-4" /> Phantom / Solflare

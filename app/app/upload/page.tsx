@@ -166,7 +166,7 @@ export default function UploadPage() {
       if (dbError) throw dbError;
 
       // 3️⃣ Trigger AI Analysis
-      const analyzeToast = toast.loading("🤖 Gemini AI is analyzing your dataset...");
+      const analyzeToast = toast.loading("RUNNING ANALYSIS...");
 
       const aiRes = await fetch("/api/ai/analyze", {
         method: "POST",
@@ -180,23 +180,26 @@ export default function UploadPage() {
 
       const aiData = await aiRes.json();
 
-      if (aiData?.success && aiData.ai_confidence_score) {
+      if (aiData?.success && typeof aiData.ai_confidence_score === 'number') {
+        const { ai_confidence_score, ai_analysis } = aiData;
+
         await supabase
           .from("datasets")
           .update({
-            ai_confidence_score: aiData.ai_confidence_score,
-            ai_analysis: aiData.ai_analysis,
+            ai_confidence_score,
+            ai_analysis,
             ai_verified_at: new Date().toISOString(),
           })
           .eq("id", insertedDataset.id);
 
         toast.success(
-          `✅ AI Confidence Score: ${aiData.ai_confidence_score}/100`,
-          { id: analyzeToast }
+          "uploaded successfully",
+          { id: analyzeToast, duration: 5000 }
         );
       } else {
+        console.error("AI Analysis Error:", aiData);
         toast.error(
-          "⚠️ AI Scoring skipped — Gemini could not analyze this file.",
+          `⚠️ AI Analysis Failed: ${aiData?.details || aiData?.error || "Unknown error"}`,
           { id: analyzeToast }
         );
       }
@@ -206,7 +209,7 @@ export default function UploadPage() {
       setUploadProgress(100);
       setUploadSuccess(true);
       window.dispatchEvent(new Event("datasetUploaded"));
-      toast.success("🎉 Dataset uploaded successfully!");
+      // toast.success("🎉 Dataset uploaded successfully!");
 
       setTimeout(() => {
         setFile(null);
@@ -289,11 +292,10 @@ export default function UploadPage() {
 
               {!file ? (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${
-                    dragActive
-                      ? "border-blue-500 bg-blue-50 scale-[1.02] shadow-lg"
-                      : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
-                  } ${uploading ? "opacity-50" : ""}`}
+                  className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${dragActive
+                    ? "border-blue-500 bg-blue-50 scale-[1.02] shadow-lg"
+                    : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                    } ${uploading ? "opacity-50" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}

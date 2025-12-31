@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use crate::{Registry, Reputation};
 
 #[derive(Accounts)]
-pub struct Initialize <'info> {
+pub struct Initialize<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
 
@@ -20,13 +20,13 @@ pub struct Initialize <'info> {
         seeds = [b"registry", admin.key().as_ref()],
         bump
     )]
-    pub registry: Account <'info, Registry>,
+    pub registry: Account<'info, Registry>,
 
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct InitializeReputation <'info> {
+pub struct InitializeReputation<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
 
@@ -35,7 +35,7 @@ pub struct InitializeReputation <'info> {
 
     #[account(mut)]
     pub contributor: Signer<'info>,
-    
+
     #[account(
         init,
         payer = contributor,
@@ -43,26 +43,21 @@ pub struct InitializeReputation <'info> {
         seeds = [b"reputation", contributor.key().as_ref()],
         bump
     )]
-    pub reputation: Account <'info, Reputation>,
+    pub reputation: Account<'info, Reputation>,
 
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
-
-impl <'info> Initialize <'info> {
-    pub fn initialize_registry (
-        &mut self,
-        bumps: &InitializeBumps
-    ) -> Result<()> {
+impl<'info> Initialize<'info> {
+    pub fn initialize_registry(&mut self, bumps: &InitializeBumps) -> Result<()> {
         self.registry.set_inner(Registry {
             admin: self.admin.key(),
             total_datasets: 0,
             total_downloads: 0,
-            bump: bumps.registry
+            bump: bumps.registry,
         });
 
         Ok(())
-
     }
 
     // pub fn initialize_dataset (
@@ -90,20 +85,19 @@ impl <'info> Initialize <'info> {
 
     // }
 
-    
     // pub fn initialize_reputation (
     //     &mut self,
     //     bumps: &InitializeBumps
     // ) -> Result<()> {
-    //     self.reputation.set_inner(Reputation { 
-    //         contributor: self.contributor.key(), 
-    //         total_uploads: 0, 
-    //         download_time: 0, 
-    //         total_quality_score: 0, 
-    //         total_downloads: 0, 
-    //         total_citations: 0, 
-    //         reputation_score: 0, 
-    //         bump: bumps.reputation 
+    //     self.reputation.set_inner(Reputation {
+    //         contributor: self.contributor.key(),
+    //         total_uploads: 0,
+    //         download_time: 0,
+    //         total_quality_score: 0,
+    //         total_downloads: 0,
+    //         total_citations: 0,
+    //         reputation_score: 0,
+    //         bump: bumps.reputation
     //     });
 
     //     Ok(())
@@ -113,12 +107,12 @@ impl <'info> Initialize <'info> {
     //     &mut self,
     //     bumps: &InitializeBumps
     // ) -> Result<()> {
-    //     self.citation.set_inner(Citation { 
-    //         dataset_id: self.dataset.key(), 
-    //         citer: self.user.key(), 
-    //         contributor: self.contributor.key(), 
-    //         published_information: Vec::new(), 
-    //         citing_time: 0, 
+    //     self.citation.set_inner(Citation {
+    //         dataset_id: self.dataset.key(),
+    //         citer: self.user.key(),
+    //         contributor: self.contributor.key(),
+    //         published_information: Vec::new(),
+    //         citing_time: 0,
     //         bump: bumps.citation
     //     });
 
@@ -129,33 +123,42 @@ impl <'info> Initialize <'info> {
     //     &mut self,
     //     bumps: &InitializeBumps
     // ) -> Result<()> {
-    //     self.attribution.set_inner(Attribution { 
-    //         dataset_id: self.dataset.key(), 
-    //         downloader: self.user.key(), 
-    //         contributor: self.contributor.key(), 
-    //         download_time: 0, 
-    //         bump: bumps.attribution 
+    //     self.attribution.set_inner(Attribution {
+    //         dataset_id: self.dataset.key(),
+    //         downloader: self.user.key(),
+    //         contributor: self.contributor.key(),
+    //         download_time: 0,
+    //         bump: bumps.attribution
     //     });
 
-        // Ok(())
-    
+    // Ok(())
 }
 
-impl <'info> InitializeReputation <'info> {
-    pub fn initialize_reputation (
-        &mut self,
-        bumps: &InitializeReputationBumps
-    ) -> Result<()> {
-        self.reputation.set_inner(Reputation { 
-            contributor: self.contributor.key(), 
-            total_uploads: 0, 
-            dataset_count: 0, 
-            download_time: 0, 
-            total_quality_score: 0, 
-            total_downloads: 0, 
-            total_citations: 0, 
-            reputation_score: 0, 
-            bump: bumps.reputation 
+impl<'info> InitializeReputation<'info> {
+    pub fn initialize_reputation(&mut self, bumps: &InitializeReputationBumps) -> Result<()> {
+        self.reputation.set_inner(Reputation {
+            contributor: self.contributor.key(),
+            total_uploads: 0,
+            dataset_count: 0,
+            download_time: 0,
+            total_quality_score: 0,
+            total_downloads: 0,
+            total_citations: 0,
+            reputation_score: 0,
+
+            // Initialize new fields
+            total_reviews: 0,
+            last_activity_timestamp: 0,
+            daily_activity_points: 0,
+
+            bump: bumps.reputation,
+
+            // Accumulators
+            total_upload_points: 0,
+            total_review_points: 0,
+            total_activity_points: 0,
+
+            claimed_points: 0,
         });
 
         Ok(())

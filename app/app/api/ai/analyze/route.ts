@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,44 +10,42 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { fileUrl, fileName, datasetId } = await req.json();
+    const body = await req.json();
+    const { fileUrl, fileSnippet: initialFileSnippet, fileName, datasetId } = body;
 
-    if (!fileUrl) {
-      return NextResponse.json({ error: "Missing fileUrl" }, { status: 400 });
+    // We accept either a direct snippet or a URL to fetch
+    if (!fileUrl && !initialFileSnippet) {
+      return NextResponse.json({ error: "Missing fileUrl or fileSnippet" }, { status: 400 });
     }
 
     console.log("🔍 Starting AI analysis for:", fileName, fileUrl);
 
     // 🔹 Try downloading file content (for real inspection)
-    let fileSnippet = "";
-    try {
-      const res = await fetch(fileUrl);
-      const blob = await res.blob();
-      const text = await blob.text();
-
-      // limit to first 3000 characters to avoid token limits
-      fileSnippet = text.slice(0, 3000);
-    } catch (fetchErr) {
-      console.warn("⚠️ Could not fetch file content:", fetchErr);
-      fileSnippet = "File content unavailable. Only metadata was analyzed.";
+    let fileSnippet = initialFileSnippet || "";
+    if (fileUrl && !initialFileSnippet) {
+      try {
+        const res = await fetch(fileUrl);
+        const blob = await res.blob();
+        const text = await blob.text();
+        // Limit to first 3000 chars to avoid token limits
+        fileSnippet = text.slice(0, 3000);
+      } catch (fetchErr) {
+        console.warn("⚠️ Could not fetch file content:", fetchErr);
+        fileSnippet = "File content unavailable. Only metadata was analyzed.";
+      }
     }
 
-    // 🔹 Initialize Gemini AI
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY!,
+    // 🔹 Initialize OpenAI Client for GitHub Models
+    const token = process.env.GITHUB_MODELS_TOKEN;
+    const client = new OpenAI({
+      baseURL: "https://models.inference.ai.azure.com",
+      apiKey: token,
     });
 
-    // 🔹 Ask Gemini to evaluate dataset quality
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `
-You are an AI data quality analyst.
-Analyze the following dataset snippet and metadata.
+    // 🔹 Construct Prompt
+    const prompt = `
+You are an AI data quality analyst for a research platform.
+Analyze the following dataset snippet and metadata to detect spam, gibberish, or low-quality content.
 
 Dataset Name: ${fileName}
 Dataset URL: ${fileUrl}
@@ -57,37 +55,64 @@ DATA SAMPLE (first lines):
 ${fileSnippet}
 """
 
-Tasks:
-1. Evaluate the structure, completeness, and consistency of this dataset.
-2. Provide an overall confidence score (0–100) — higher means better quality.
-3. Give a one-sentence summary of your reasoning.
-`,
-            },
-          ],
-        },
+Instructions:
+1. Check if the content is "Gibberish" (random text), "Spam" (promotional/irrelevant), or "Empty/Low Effort".
+2. Evaluate structure, consistency, and scientific/research value.
+3. Assign a "score" (0-100). Files with gibberish or spam MUST have a score < 10.
+4. Set "is_spam" to true if the content is invalid, gibberish, or not useful data.
+
+Output EXACTLY this JSON format (no markdown code blocks):
+{
+  "score": number,
+  "is_spam": boolean,
+  "reason": "Short summary of your assessment"
+}
+`;
+
+    // 🔹 Generate Content
+    const response = await client.chat.completions.create({
+      messages: [
+        { role: "system", content: "You are a helpful data analyst." },
+        { role: "user", content: prompt },
       ],
+      model: "gpt-4o", // Supporting GitHub Models free tier
+      temperature: 1,
+      max_tokens: 1000,
+      top_p: 1,
     });
 
-    // 👇 FIX: Use optional chaining (?.()) to safely call the text() method,
-    // resolving the "possibly 'undefined'" type error.
-    const output = response.text || "No AI response generated."; 
+    const outputText = response.choices[0].message.content || "{}";
 
-    // Extract numeric confidence
-    const match = output.match(/\b\d{1,3}\b/);
-    const ai_confidence_score = match
-      ? Math.min(parseInt(match[0]), 100)
-      : Math.floor(Math.random() * 30) + 60;
+    // Clean potential markdown blocks if AI adds them
+    const cleanJson = outputText.replace(/```json/g, "").replace(/```/g, "").trim();
 
-    console.log("✅ AI score:", ai_confidence_score);
+    let aiResult = { score: 0, is_spam: false, reason: "Analysis failed" };
+    try {
+      aiResult = JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.warn("Failed to parse AI JSON, falling back to regex", parseError);
+      // Fallback regex extraction
+      const matchScore = outputText.match(/"score":\s*(\d+)/);
+      const matchSpam = outputText.match(/"is_spam":\s*(true|false)/);
+      if (matchScore) aiResult.score = parseInt(matchScore[1]);
+      if (matchSpam) aiResult.is_spam = matchSpam[1] === "true";
+    }
+
+    console.log("✅ AI Analysis Result:", aiResult);
+
+    const isRejected = aiResult.is_spam || aiResult.score < 30;
+    const finalStatus = isRejected ? "rejected" : "ai_verified";
+    const finalScore = isRejected ? 0 : aiResult.score;
 
     // 🔹 Save AI results to Supabase
     if (datasetId) {
       const { error: updateError } = await supabase
         .from("datasets")
         .update({
-          ai_confidence_score,
-          ai_analysis: output,
+          ai_confidence_score: finalScore,
+          ai_analysis: aiResult.reason,
           ai_verified_at: new Date().toISOString(),
+          status: finalStatus
         })
         .eq("id", datasetId);
 
@@ -97,10 +122,12 @@ Tasks:
 
     return NextResponse.json({
       success: true,
-      ai_confidence_score,
-      ai_analysis: output,
-      message: "AI analyzed dataset successfully.",
+      ai_confidence_score: finalScore,
+      ai_analysis: aiResult.reason,
+      status: finalStatus,
+      message: isRejected ? "Dataset rejected by AI analysis." : "AI analyzed dataset successfully.",
     });
+
   } catch (error: any) {
     console.error("💥 AI analysis error:", error.message);
     return NextResponse.json(

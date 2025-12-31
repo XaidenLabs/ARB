@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { 
-  Trophy, 
-  Upload, 
-  Star, 
-  Award, 
-  TrendingUp, 
+import {
+  Trophy,
+  Upload,
+  Star,
+  Award,
+  TrendingUp,
   Eye,
   Download,
   Share2,
@@ -28,7 +28,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
     totalViews: 0,
     totalDownloads: 0,
   });
-  
+
   const [recentActivity, setRecentActivity] = useState([]);
   const [topDatasets, setTopDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
       // Fetch user stats
       const response = await fetch(`/api/user/dashboard?userId=${userId}`);
       const data = await response.json();
-      
+
       setStats(data.stats);
       setRecentActivity(data.recentActivity);
       setTopDatasets(data.topDatasets);
@@ -107,6 +107,26 @@ export default function UserDashboard({ userId }: DashboardProps) {
           <div className="text-green-100">Datasets Uploaded</div>
         </div>
 
+        {/* Claim Rewards */}
+        <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <img src="https://dd.dexscreener.com/ds-data/tokens/solana/D7ao8w8yjmjMWDfNzgt7J1uVP6qa3JNiRndkoXncyai.png?size=lg&key=62a6f9" alt="ARB" className="w-8 h-8 rounded-full bg-white" />
+              <span className="font-bold text-lg">ARB Token</span>
+            </div>
+            <a href="https://dexscreener.com/solana/9m3n7mrx8dfbfkjferupvjatphkmrnytnycjlqhdcgab" target="_blank" rel="noopener noreferrer" className="text-xs bg-black/20 hover:bg-black/30 px-2 py-1 rounded transition-colors flex items-center">
+              Chart <TrendingUp className="w-3 h-3 ml-1" />
+            </a>
+          </div>
+          <div className="mb-3">
+            <div className="text-2xl font-bold">{stats.reputationScore} ARB</div>
+            <div className="text-orange-100 text-sm">Claimable Balance</div>
+          </div>
+          <button className="w-full py-2 bg-white text-orange-600 font-bold rounded-lg shadow-sm hover:bg-orange-50 transition-colors flex items-center justify-center">
+            Claim Tokens <Award className="w-4 h-4 ml-1" />
+          </button>
+        </div>
+
         {/* Reviews */}
         <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
@@ -118,6 +138,18 @@ export default function UserDashboard({ userId }: DashboardProps) {
           <div className="text-3xl font-bold mb-1">{stats.reviewsGiven}</div>
           <div className="text-amber-100">Reviews Given</div>
         </div>
+
+        {/* Community Activity */}
+        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <TrendingUp className="w-8 h-8" />
+            <span className="text-sm font-medium bg-white/20 px-3 py-1 rounded-full">
+              Daily Cap
+            </span>
+          </div>
+          <div className="text-3xl font-bold mb-1">{(stats as any).dailyActivityPoints || 0}/100</div>
+          <div className="text-pink-100">Community Points</div>
+        </div>
       </div>
 
       {/* Content Grid */}
@@ -128,7 +160,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
             <h2 className="text-xl font-bold text-gray-900 mb-6">
               Your Top Datasets
             </h2>
-            
+
             <div className="space-y-4">
               {topDatasets.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -164,7 +196,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="ml-4">
                         {dataset.verification_status === 'verified' ? (
                           <span className="flex items-center space-x-1 text-green-600 text-sm">
@@ -184,7 +216,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <button className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1">
                         <Share2 className="w-4 h-4" />
@@ -204,7 +236,7 @@ export default function UserDashboard({ userId }: DashboardProps) {
             <h2 className="text-xl font-bold text-gray-900 mb-6">
               Recent Activity
             </h2>
-            
+
             <div className="space-y-4">
               {recentActivity.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -217,18 +249,17 @@ export default function UserDashboard({ userId }: DashboardProps) {
                     key={index}
                     className="flex items-start space-x-3 pb-4 border-b border-gray-100 last:border-0"
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      activity.type === 'upload' ? 'bg-green-100 text-green-600' :
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.type === 'upload' ? 'bg-green-100 text-green-600' :
                       activity.type === 'review' ? 'bg-blue-100 text-blue-600' :
-                      activity.type === 'verification' ? 'bg-purple-100 text-purple-600' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                        activity.type === 'verification' ? 'bg-purple-100 text-purple-600' :
+                          'bg-gray-100 text-gray-600'
+                      }`}>
                       {activity.type === 'upload' ? <Upload className="w-4 h-4" /> :
-                       activity.type === 'review' ? <Star className="w-4 h-4" /> :
-                       activity.type === 'verification' ? <CheckCircle className="w-4 h-4" /> :
-                       <Trophy className="w-4 h-4" />}
+                        activity.type === 'review' ? <Star className="w-4 h-4" /> :
+                          activity.type === 'verification' ? <CheckCircle className="w-4 h-4" /> :
+                            <Trophy className="w-4 h-4" />}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900 mb-1">
                         {activity.description}
@@ -253,20 +284,24 @@ export default function UserDashboard({ userId }: DashboardProps) {
             <h3 className="font-semibold text-gray-900 mb-4">Points Guide</h3>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Sign up</span>
-                <span className="font-medium text-gray-900">100 pts</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Upload dataset</span>
-                <span className="font-medium text-gray-900">50-150 pts</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Review dataset</span>
+                <span className="text-gray-600">Upload dataset (Tier 1)</span>
                 <span className="font-medium text-gray-900">20 pts</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Dataset verified</span>
-                <span className="font-medium text-gray-900">200 pts</span>
+                <span className="text-gray-600">Upload dataset (Tier 2)</span>
+                <span className="font-medium text-gray-900">35 pts</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Upload dataset (Tier 3)</span>
+                <span className="font-medium text-gray-900">300 pts</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Review dataset</span>
+                <span className="font-medium text-gray-900">50 pts</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Community Activity</span>
+                <span className="font-medium text-gray-900">20 pts/action</span>
               </div>
             </div>
           </div>

@@ -9,9 +9,10 @@ interface SignInModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToSignup: () => void;
+  redirectUrl?: string;
 }
 
-export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalProps) {
+export function SignInModal({ isOpen, onClose, onSwitchToSignup, redirectUrl }: SignInModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,8 +37,12 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalPr
       if (result?.error) {
         setError('Invalid email or password. Please try again.');
       } else {
-        // Success! Reload to update session
-        window.location.reload();
+        // Success!
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+        } else {
+          window.location.reload();
+        }
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -51,7 +56,7 @@ export function SignInModal({ isOpen, onClose, onSwitchToSignup }: SignInModalPr
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />

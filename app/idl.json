@@ -521,6 +521,98 @@
             "type": "u8"
           }
         ]
+      },
+      {
+        "name": "update_reputation_review",
+        "discriminator": [
+             200, 100, 50, 20, 10, 5, 2, 1 
+        ],
+        "accounts": [
+          {
+            "name": "admin",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "contributor",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "reputation",
+            "writable": true,
+            "pda": {
+              "seeds": [
+                {
+                  "kind": "const",
+                  "value": [114, 101, 112, 117, 116, 97, 116, 105, 111, 110]
+                },
+                {
+                  "kind": "account",
+                  "path": "contributor"
+                }
+              ]
+            }
+          },
+          {
+            "name": "system_program",
+            "address": "11111111111111111111111111111111"
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "redeem_points",
+        "discriminator": [
+             200, 100, 50, 20, 10, 5, 2, 3 
+        ],
+        "accounts": [
+          {
+            "name": "user",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "reputation",
+            "writable": true,
+            "pda": {
+              "seeds": [
+                {
+                  "kind": "const",
+                  "value": [114, 101, 112, 117, 116, 97, 116, 105, 111, 110]
+                },
+                {
+                  "kind": "account",
+                  "path": "user"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reward_vault",
+            "writable": true
+          },
+          {
+            "name": "user_token_account",
+            "writable": true
+          },
+          {
+            "name": "vault_authority",
+            "pda": {
+                "seeds": [
+                    {
+                        "kind": "const",
+                        "value": [118, 97, 117, 108, 116, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121] 
+                    }
+                ]
+            }
+          },
+          {
+            "name": "token_program",
+            "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          }
+        ],
+        "args": []
       }
     ],
     "accounts": [
@@ -884,6 +976,34 @@
             {
               "name": "reputation_score",
               "type": "u32"
+            },
+            {
+              "name": "total_reviews",
+              "type": "u64"
+            },
+            {
+              "name": "last_activity_timestamp",
+              "type": "i64"
+            },
+            {
+              "name": "daily_activity_points",
+              "type": "u32"
+            },
+            {
+              "name": "total_upload_points",
+              "type": "u64"
+            },
+            {
+              "name": "total_review_points",
+              "type": "u64"
+            },
+            {
+              "name": "total_activity_points",
+              "type": "u64"
+            },
+            {
+              "name": "claimed_points",
+              "type": "u64"
             },
             {
               "name": "bump",

@@ -135,10 +135,8 @@ export async function POST(req: NextRequest) {
       .from('users')
       .update({
         full_name: fullName || email,
-        institution: institution || null,
-        research_field: researchField || null,
-        country: country || null,
-        role: dbRole,
+        affiliation: institution || null,
+        research_interests: researchField ? [researchField] : [],
         bio: researchBackground || null,
       })
       .eq('id', userId);

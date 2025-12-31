@@ -7,5 +7,8 @@ pub use create_dataset::*;
 pub mod update_reputation;
 pub use update_reputation::*;
 
+pub mod redeem;
+pub use redeem::*;
+
 // pub mod record_citation;
 // pub use record_citation::*;

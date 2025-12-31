@@ -19,6 +19,7 @@ test-sbf = []
 
 [dependencies]
 anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
 
 [dev-dependencies]
 solana-program = "3.0.0"
