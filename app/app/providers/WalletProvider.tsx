@@ -22,7 +22,12 @@ export const SolanaWalletProvider: FC<SolanaProviderProps> = ({ children }) => {
   const network = WalletAdapterNetwork.Mainnet;
 
   // You can also provide a custom RPC endpoint
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_RPC_ENDPOINT) {
+      return process.env.NEXT_PUBLIC_RPC_ENDPOINT;
+    }
+    return clusterApiUrl(network);
+  }, [network]);
 
   const wallets = useMemo(
     () => [
