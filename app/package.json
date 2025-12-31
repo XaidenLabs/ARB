@@ -28,6 +28,7 @@
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.75.1",
     "@swc/helpers": "^0.5.17",
+    "@vercel/analytics": "^1.6.1",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "bignumber.js": "^9.3.1",

@@ -36,6 +36,8 @@ export const viewport = {
   initialScale: 1,
 };
 
+import { Analytics } from "@vercel/analytics/react";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -51,6 +53,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <Analytics />
           </SolanaWalletProvider>
         </Providers>
       </body>
