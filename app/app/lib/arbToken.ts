@@ -1,10 +1,12 @@
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { 
   TOKEN_PROGRAM_ID, 
+  TOKEN_2022_PROGRAM_ID,
   getAssociatedTokenAddress, 
   createAssociatedTokenAccountInstruction,
   createTransferInstruction,
-  getAccount
+  getAccount,
+  getMint
 } from '@solana/spl-token';
 
 // $ARB Token Details
@@ -24,6 +26,8 @@ const TREASURY_PRIVATE_KEY = process.env.ARB_TREASURY_PRIVATE_KEY || '';
 export class ARBTokenService {
   private connection: Connection;
   private treasuryKeypair: Keypair | null = null;
+  private tokenProgramId: PublicKey = TOKEN_PROGRAM_ID; // Default to standard
+  private programIdResolved = false;
 
   constructor(rpcUrl: string) {
     this.connection = new Connection(rpcUrl, 'confirmed');
@@ -38,6 +42,25 @@ export class ARBTokenService {
         console.error('Failed to initialize treasury wallet:', error);
       }
     }
+  }
+
+  /**
+   * Resolve the correct Token Program ID (Token or Token-2022) based on the Mint's owner
+   */
+  private async getProgramId(): Promise<PublicKey> {
+    if (this.programIdResolved) return this.tokenProgramId;
+
+    try {
+      const mintAccount = await this.connection.getAccountInfo(ARB_TOKEN_MINT);
+      if (mintAccount) {
+        this.tokenProgramId = mintAccount.owner;
+        this.programIdResolved = true;
+        console.log('Resolved Token Program ID:', this.tokenProgramId.toBase58());
+      }
+    } catch (error) {
+      console.warn('Failed to resolve mint program ID, defaulting to TOKEN_PROGRAM_ID', error);
+    }
+    return this.tokenProgramId;
   }
 
   /**
@@ -59,14 +82,17 @@ export class ARBTokenService {
    */
   async getOrCreateTokenAccount(userPublicKey: PublicKey): Promise<PublicKey> {
     try {
+      const programId = await this.getProgramId();
       const associatedTokenAddress = await getAssociatedTokenAddress(
         ARB_TOKEN_MINT,
-        userPublicKey
+        userPublicKey,
+        false,
+        programId
       );
 
       // Check if account exists
       try {
-        await getAccount(this.connection, associatedTokenAddress);
+        await getAccount(this.connection, associatedTokenAddress, undefined, programId);
         console.log('Token account exists:', associatedTokenAddress.toBase58());
         return associatedTokenAddress;
       } catch (error) {
@@ -95,15 +121,21 @@ export class ARBTokenService {
     try {
       console.log(`Transferring ${amount} $ARB to ${recipientPublicKey.toBase58()} for: ${reason}`);
 
+      const programId = await this.getProgramId();
+
       // Get token accounts
       const treasuryTokenAccount = await getAssociatedTokenAddress(
         ARB_TOKEN_MINT,
-        this.treasuryKeypair.publicKey
+        this.treasuryKeypair.publicKey,
+        false,
+        programId
       );
 
       const recipientTokenAccount = await getAssociatedTokenAddress(
         ARB_TOKEN_MINT,
-        recipientPublicKey
+        recipientPublicKey,
+        false,
+        programId
       );
 
       // Create transaction
@@ -111,7 +143,7 @@ export class ARBTokenService {
 
       // Check if recipient token account exists, if not create it
       try {
-        await getAccount(this.connection, recipientTokenAccount);
+        await getAccount(this.connection, recipientTokenAccount, undefined, programId);
       } catch {
         // Create associated token account for recipient
         transaction.add(
@@ -119,7 +151,8 @@ export class ARBTokenService {
             this.treasuryKeypair.publicKey, // payer
             recipientTokenAccount,
             recipientPublicKey,
-            ARB_TOKEN_MINT
+            ARB_TOKEN_MINT,
+            programId
           )
         );
       }
@@ -133,7 +166,7 @@ export class ARBTokenService {
           this.treasuryKeypair.publicKey,
           tokenAmount,
           [],
-          TOKEN_PROGRAM_ID
+          programId
         )
       );
 
@@ -170,7 +203,8 @@ export class ARBTokenService {
       const tokenAccount = await this.ensureTokenAccount(userPublicKey);
       if (!tokenAccount) return 0;
 
-      const accountInfo = await getAccount(this.connection, tokenAccount);
+      const programId = await this.getProgramId();
+      const accountInfo = await getAccount(this.connection, tokenAccount, undefined, programId);
       return this.fromTokenAmount(Number(accountInfo.amount));
     } catch (error) {
       console.log('No token account found or error:', error);
@@ -182,13 +216,16 @@ export class ARBTokenService {
    * Ensure ATA exists; create it (paid by treasury) if missing.
    */
   private async ensureTokenAccount(userPublicKey: PublicKey): Promise<PublicKey | null> {
+    const programId = await this.getProgramId();
     const associatedTokenAddress = await getAssociatedTokenAddress(
       ARB_TOKEN_MINT,
-      userPublicKey
+      userPublicKey,
+      false,
+      programId
     );
 
     try {
-      await getAccount(this.connection, associatedTokenAddress);
+      await getAccount(this.connection, associatedTokenAddress, undefined, programId);
       return associatedTokenAddress;
     } catch (error) {
       if (!this.treasuryKeypair) {
@@ -202,7 +239,8 @@ export class ARBTokenService {
             this.treasuryKeypair.publicKey, // payer
             associatedTokenAddress,
             userPublicKey,
-            ARB_TOKEN_MINT
+            ARB_TOKEN_MINT,
+            programId
           )
         );
 
@@ -231,12 +269,15 @@ export class ARBTokenService {
     }
 
     try {
+      const programId = await this.getProgramId();
       const treasuryTokenAccount = await getAssociatedTokenAddress(
         ARB_TOKEN_MINT,
-        this.treasuryKeypair.publicKey
+        this.treasuryKeypair.publicKey,
+        false,
+        programId
       );
 
-      const accountInfo = await getAccount(this.connection, treasuryTokenAccount);
+      const accountInfo = await getAccount(this.connection, treasuryTokenAccount, undefined, programId);
       return this.fromTokenAmount(Number(accountInfo.amount));
     } catch (error) {
       console.error('Error getting treasury balance:', error);
