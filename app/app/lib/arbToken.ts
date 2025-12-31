@@ -10,14 +10,14 @@ import {
 } from '@solana/spl-token';
 
 // $ARB Token Details
-const DEFAULT_ARB_MINT = 'BUd49N8cqwj4q7NHPSKWJM4iqgjs3pck98rZKhYgpb4x';
+const DEFAULT_ARB_MINT = 'D7ao8w8yjmjMWDfNzgt7J1uVP6qa3JNiRndkoXncyai';
 const mintAddress =
   process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS && process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS.length > 0
     ? process.env.NEXT_PUBLIC_ARB_MINT_ADDRESS
     : DEFAULT_ARB_MINT;
 
 export const ARB_TOKEN_MINT = new PublicKey(mintAddress);
-export const ARB_DECIMALS = Number(process.env.NEXT_PUBLIC_ARB_DECIMALS || 6); // Standard SPL token decimals
+export const ARB_DECIMALS = Number(process.env.NEXT_PUBLIC_ARB_DECIMALS || 9); // ARB token decimals (9)
 
 // Treasury wallet that holds $ARB tokens for distribution
 // You'll need to fund this wallet with $ARB tokens
@@ -326,5 +326,5 @@ export const REWARD_AMOUNTS = {
 
 // Export singleton instance
 export const arbTokenService = new ARBTokenService(
-  process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.devnet.solana.com'
+  process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
 );

@@ -246,7 +246,7 @@ export default function WalletPage() {
       const mintInfo = await connection.getAccountInfo(ARB_MINT);
 
       if (!mintInfo) {
-        throw new Error("Could not fetch ARB Mint info. Ensure you are on the correct network (Devnet).");
+        throw new Error("Could not fetch ARB Mint info. Ensure you are on the correct network (Mainnet).");
       }
 
       const tokenProgramId = mintInfo.owner;
