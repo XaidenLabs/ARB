@@ -36,6 +36,7 @@ export const viewport = {
   initialScale: 1,
 };
 
+import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/react";
 
 export default function RootLayout({
@@ -50,7 +51,9 @@ export default function RootLayout({
       >
         <Providers>
           <SolanaWalletProvider>
-            <Header />
+            <Suspense fallback={<div className="h-16 bg-white border-b border-gray-100" />}>
+              <Header />
+            </Suspense>
             <main className="flex-1">{children}</main>
             <Footer />
             <Analytics />
