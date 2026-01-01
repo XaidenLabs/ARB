@@ -18,75 +18,9 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { useEnhancedWallet } from "../hooks/useEnhancedWallet";
-import { Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import {
-  getAssociatedTokenAddress,
-  createAssociatedTokenAccountInstruction,
-  TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
 
 
 // Constants
-const ARB_MINT = new PublicKey("D7ao8w8yjmjMWDfNzgt7J1uVP6qa3JNiRndkoXncyai");
-const PROGRAM_ID = new PublicKey("EAo3vy4cYj9ezXbkZRwWkhUnNCjiBcF2qp8vwXwNsPPD");
-
-// Minimal IDL for Withdrawals
-const REDEEM_IDL: any = {
-  "address": "EAo3vy4cYj9ezXbkZRwWkhUnNCjiBcF2qp8vwXwNsPPD",
-  "metadata": {
-    "name": "africa_research_base",
-    "version": "0.1.0",
-    "spec": "0.1.0"
-  },
-  "instructions": [
-    {
-      "name": "redeem_points",
-      "discriminator": [200, 100, 50, 20, 10, 5, 2, 3],
-      "accounts": [
-        { "name": "user", "writable": true, "signer": true },
-        { "name": "reputation", "writable": true, "pda": { "seeds": [{ "kind": "const", "value": [114, 101, 112, 117, 116, 97, 116, 105, 111, 110] }, { "kind": "account", "path": "user" }] } },
-        { "name": "reward_vault", "writable": true },
-        { "name": "user_token_account", "writable": true },
-        { "name": "vault_authority", "pda": { "seeds": [{ "kind": "const", "value": [118, 97, 117, 108, 116, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121] }] } },
-        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
-      ],
-      "args": []
-    }
-  ],
-  "accounts": [
-    {
-      "name": "Reputation",
-      "discriminator": [55, 148, 90, 71, 68, 183, 193, 28]
-    }
-  ],
-  "types": [
-    {
-      "name": "Reputation",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "contributor", "type": "pubkey" },
-          { "name": "total_uploads", "type": "u32" },
-          { "name": "dataset_count", "type": "u32" },
-          { "name": "download_time", "type": "i64" },
-          { "name": "total_quality_score", "type": "u64" },
-          { "name": "total_downloads", "type": "u64" },
-          { "name": "total_citations", "type": "u32" },
-          { "name": "reputation_score", "type": "u32" },
-          { "name": "total_reviews", "type": "u64" },
-          { "name": "last_activity_timestamp", "type": "i64" },
-          { "name": "daily_activity_points", "type": "u32" },
-          { "name": "total_upload_points", "type": "u64" },
-          { "name": "total_review_points", "type": "u64" },
-          { "name": "total_activity_points", "type": "u64" },
-          { "name": "claimed_points", "type": "u64" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    }
-  ]
-};
 
 interface WalletOverview {
   balances: {
@@ -113,7 +47,7 @@ interface WalletOverview {
 
 export default function WalletPage() {
   const { data: nextAuthSession, status } = useSession();
-  const { walletState, connectWallet, disconnectWallet, fetchBalance, anchorWallet, connection } = useEnhancedWallet();
+  const { walletState, connectWallet, disconnectWallet, fetchBalance } = useEnhancedWallet();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -211,137 +145,66 @@ export default function WalletPage() {
       toast.error("Sign in to withdraw.");
       return;
     }
-    if (!anchorWallet) {
+
+    // We strictly require a wallet connection to ensure the user has a destination
+    if (!walletState.publicKey) {
       toast.error("Connect your Solana wallet to withdraw.");
       connectWallet();
       return;
     }
 
+    // Ensure the profile has the configured wallet address saved
+    if (overview?.balances.walletAddress !== walletState.publicKey) {
+      toast.error("Please save your connected wallet to your profile first.");
+      return;
+    }
+
     setWithdrawing(true);
-    const toastId = toast.loading("Initializing withdrawal...");
+    const toastId = toast.loading("Processing withdrawal...");
 
     try {
-      // 1. Setup Anchor Provider
-      const provider = new AnchorProvider(connection, anchorWallet, {
-        preflightCommitment: "confirmed",
-      });
-
-      // Use minimal IDL to avoid crashes
-      const program = new Program(REDEEM_IDL, provider);
-
-      // 2. Derive PDAs
-      const [reputationPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("reputation"), anchorWallet.publicKey.toBuffer()],
-        PROGRAM_ID
-      );
-
-      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("vault_authority")],
-        PROGRAM_ID
-      );
-
-      // 3. Get Token Accounts
-      // Fetch Mint Info to determine Program ID (Token or Token-2022)
-      console.log("Fetching mint info for:", ARB_MINT.toBase58());
-      const mintInfo = await connection.getAccountInfo(ARB_MINT);
-
-      if (!mintInfo) {
-        throw new Error("Could not fetch ARB Mint info. Ensure you are on the correct network (Mainnet).");
-      }
-
-      const tokenProgramId = mintInfo.owner;
-      console.log("Resolved Token Program ID:", tokenProgramId.toBase58());
-
-      // Reward Vault (Owned by vault_authority)
-      const rewardVault = await getAssociatedTokenAddress(
-        ARB_MINT,
-        vaultAuthorityPda,
-        true, // allowOwnerOffCurve = true for PDAs
-        tokenProgramId
-      );
-
-      // User Token Account
-      const userTokenAccount = await getAssociatedTokenAddress(
-        ARB_MINT,
-        anchorWallet.publicKey,
-        false,
-        tokenProgramId
-      );
-
-      console.log("PDAs Derived:", {
-        reputation: reputationPda.toBase58(),
-        vaultAuthority: vaultAuthorityPda.toBase58(),
-        rewardVault: rewardVault.toBase58(),
-        userTokenAccount: userTokenAccount.toBase58(),
-      });
-
-      // CHECK IF USER ATA EXISTS
-      // We must pass the correct programId to getAccount as well
-      const userAtaInfo = await connection.getAccountInfo(userTokenAccount);
-      const preInstructions: TransactionInstruction[] = [];
-
-      if (!userAtaInfo) {
-        console.log("User ATA missing, adding create instruction...");
-        toast.loading(`Creating ${tokenProgramId.equals(TOKEN_PROGRAM_ID) ? 'Token' : 'Token-2022'} Account...`, { id: toastId });
-        preInstructions.push(
-          createAssociatedTokenAccountInstruction(
-            anchorWallet.publicKey, // payer
-            userTokenAccount,       // ata
-            anchorWallet.publicKey, // owner
-            ARB_MINT,               // mint
-            tokenProgramId          // programId
-          )
-        );
-      }
-
-      if (amount > (overview?.balances.points ?? 0)) {
-        throw new Error("Withdrawal amount exceeds available points.");
-      }
-
-      toast.loading("Please sign the transaction...", { id: toastId });
-
-      const tx = await program.methods
-        .redeemPoints()
-        .accounts({
-          user: anchorWallet.publicKey,
-          reputation: reputationPda,
-          rewardVault: rewardVault,
-          userTokenAccount: userTokenAccount,
-          vaultAuthority: vaultAuthorityPda,
-          tokenProgram: tokenProgramId, // <--- Key Fix: Use dynamic program ID
-        })
-        .preInstructions(preInstructions)
-        .rpc();
-
-      console.log("Transaction Signature:", tx);
-
-      // 5. Record Transaction on Backend
-      toast.loading("Confirming transaction...", { id: toastId });
-
-      await fetch("/api/wallet", {
+      const res = await fetch("/api/wallet", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
-          amount, // Log the amount they engaged with (or max)
-          txSignature: tx,
-          description: `Redemption of ${amount} Points for ARB`
+          amount,
+          description: `Withdrawal of ${amount} ARB Points`
         }),
       });
 
-      toast.success(`Successfully withdrew ARB! Tx: ${tx.slice(0, 8)}...`, { id: toastId });
-      setWithdrawAmount("");
-      await loadWalletData(); // Refresh DB stats
-      await fetchBalance();   // Refresh Solana balance
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Withdrawal failed");
+      }
+
+      if (json.success) {
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span>Successfully withdrew {amount} ARB!</span>
+            {json.explorerUrl && (
+              <a
+                href={json.explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs underline text-blue-200 hover:text-white"
+              >
+                View Transaction
+              </a>
+            )}
+          </div>,
+          { id: toastId, duration: 5000 }
+        );
+        setWithdrawAmount("");
+        await loadWalletData(); // Refresh DB stats
+        await fetchBalance();   // Refresh Solana balance
+      } else {
+        throw new Error(json.error || "Unknown error occurred");
+      }
 
     } catch (err: any) {
       console.error("Withdraw error:", err);
-      const isCancelled = err.message?.includes("User rejected") || err.name === "WalletSignTransactionError";
-
-      if (isCancelled) {
-        toast.error("Transaction cancelled", { id: toastId });
-      } else {
-        toast.error(err.message || "Withdrawal failed.", { id: toastId });
-      }
+      toast.error("Withdrawal failed.", { id: toastId });
     } finally {
       setWithdrawing(false);
     }
