@@ -33,6 +33,7 @@ export function useEnhancedWallet() {
   const fetchBalance = useCallback(async () => {
     if (publicKey && connection) {
       try {
+        console.log("useEnhancedWallet fetching balance from:", connection.rpcEndpoint);
         const balance = await connection.getBalance(publicKey);
         setBalance(balance / LAMPORTS_PER_SOL);
       } catch (error) {

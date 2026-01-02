@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { 
   TOKEN_PROGRAM_ID, 
@@ -23,14 +25,24 @@ export const ARB_DECIMALS = Number(process.env.NEXT_PUBLIC_ARB_DECIMALS || 9); /
 // You'll need to fund this wallet with $ARB tokens
 const TREASURY_PRIVATE_KEY = process.env.ARB_TREASURY_PRIVATE_KEY || '';
 
+// List of public/free RPC endpoints for failover
+const RPC_ENDPOINTS = [
+  process.env.NEXT_PUBLIC_RPC_ENDPOINT, // Primary (User's Helius)
+  'https://api.mainnet-beta.solana.com', // Official Public
+  'https://solana-rpc.publicnode.com',   // PublicNode
+  'https://rpc.ankr.com/solana',         // Ankr
+  'https://solana.drpc.org',             // dRPC
+].filter(Boolean) as string[];
+
 export class ARBTokenService {
-  private connection: Connection;
+  private connections: Connection[];
   private treasuryKeypair: Keypair | null = null;
-  private tokenProgramId: PublicKey = TOKEN_PROGRAM_ID; // Default to standard
+  private tokenProgramId: PublicKey = TOKEN_PROGRAM_ID;
   private programIdResolved = false;
 
-  constructor(rpcUrl: string) {
-    this.connection = new Connection(rpcUrl, 'confirmed');
+  constructor() {
+    // Initialize a connection pool
+    this.connections = RPC_ENDPOINTS.map(url => new Connection(url, 'confirmed'));
     
     // Initialize treasury wallet if private key is available
     if (TREASURY_PRIVATE_KEY) {
@@ -45,20 +57,67 @@ export class ARBTokenService {
   }
 
   /**
+   * Execute a callback with failover/retry logic across multiple RPCs
+   */
+  private async executeWithRetry<T>(
+    operation: (connection: Connection) => Promise<T>,
+    description: string
+  ): Promise<T> {
+    let lastError: any;
+
+    for (const connection of this.connections) {
+      try {
+        // @ts-ignore - Accessing private _rpcEndpoint for logging serves debug purposes
+        const rpcUrl = connection._rpcEndpoint; 
+        // console.log(`Attempting ${description} via ${rpcUrl}...`);
+        
+        return await operation(connection);
+      } catch (error: any) {
+        lastError = error;
+        // If it's a rate limit (429) or generic fetch error, try next. 
+        // If it's a logic error (Sim error), don't retry as it will fail everywhere.
+        const msg = error?.message || "";
+        const isNetworkError = msg.includes("429") || msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("504") || msg.includes("fetch") || msg.includes("network") || msg.includes("401") || msg.includes("403");
+        // @ts-ignore
+        const currentUrl = connection._rpcEndpoint;
+        
+        if (!isNetworkError) {
+             console.log(`Non-network error encountered on ${currentUrl}:`, error.message);
+             throw error; // Don't retry logic errors
+        }
+        console.warn(`RPC failed (${currentUrl}) with ${msg}, switching...`);
+      }
+    }
+    throw new Error(`All RPCs failed for ${description}. Last error: ${lastError?.message}`);
+  }
+
+  /**
    * Resolve the correct Token Program ID (Token or Token-2022) based on the Mint's owner
    */
   private async getProgramId(): Promise<PublicKey> {
+    if (ARB_TOKEN_MINT.toBase58() === 'D7ao8w8yjmjMWDfNzgt7J1uVP6qa3JNiRndkoXncyai') {
+        this.tokenProgramId = TOKEN_2022_PROGRAM_ID;
+        this.programIdResolved = true;
+        return this.tokenProgramId;
+    }
+
     if (this.programIdResolved) return this.tokenProgramId;
 
     try {
-      const mintAccount = await this.connection.getAccountInfo(ARB_TOKEN_MINT);
-      if (mintAccount) {
-        this.tokenProgramId = mintAccount.owner;
-        this.programIdResolved = true;
-        console.log('Resolved Token Program ID:', this.tokenProgramId.toBase58());
-      }
+      await this.executeWithRetry(async (connection) => {
+        console.log('Fetching ARB Mint info...');
+        const mintAccount = await connection.getAccountInfo(ARB_TOKEN_MINT);
+        if (mintAccount) {
+            this.tokenProgramId = mintAccount.owner;
+            this.programIdResolved = true;
+        } else {
+            throw new Error(`ARB Mint not found on this RPC`);
+        }
+      }, "resolveProgramId");
+      
     } catch (error) {
-      console.warn('Failed to resolve mint program ID, defaulting to TOKEN_PROGRAM_ID', error);
+       console.error('Critical Error: Failed to resolve Mint Program ID.', error);
+       throw new Error("Failed to resolve Token Program ID. Check RPC connection.");
     }
     return this.tokenProgramId;
   }
@@ -81,29 +140,31 @@ export class ARBTokenService {
    * Get or create Associated Token Account for a user
    */
   async getOrCreateTokenAccount(userPublicKey: PublicKey): Promise<PublicKey> {
-    try {
-      const programId = await this.getProgramId();
-      const associatedTokenAddress = await getAssociatedTokenAddress(
-        ARB_TOKEN_MINT,
-        userPublicKey,
-        false,
-        programId
-      );
-
-      // Check if account exists
+    return this.executeWithRetry(async (connection) => {
       try {
-        await getAccount(this.connection, associatedTokenAddress, undefined, programId);
-        console.log('Token account exists:', associatedTokenAddress.toBase58());
-        return associatedTokenAddress;
+        const programId = await this.getProgramId();
+        const associatedTokenAddress = await getAssociatedTokenAddress(
+          ARB_TOKEN_MINT,
+          userPublicKey,
+          false,
+          programId
+        );
+  
+        // Check if account exists
+        try {
+          await getAccount(connection, associatedTokenAddress, undefined, programId);
+          console.log('Token account exists:', associatedTokenAddress.toBase58());
+          return associatedTokenAddress;
+        } catch (error) {
+          // Account doesn't exist, we'll need to create it
+          console.log('Token account needs to be created');
+          return associatedTokenAddress;
+        }
       } catch (error) {
-        // Account doesn't exist, we'll need to create it
-        console.log('Token account needs to be created');
-        return associatedTokenAddress;
+        console.error('Error getting token account:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error getting token account:', error);
-      throw error;
-    }
+    }, "getOrCreateTokenAccount");
   }
 
   /**
@@ -118,146 +179,135 @@ export class ARBTokenService {
       throw new Error('Treasury wallet not initialized. Please set ARB_TREASURY_PRIVATE_KEY');
     }
 
-    try {
-      console.log(`Transferring ${amount} $ARB to ${recipientPublicKey.toBase58()} for: ${reason}`);
+    return this.executeWithRetry(async (connection) => {
+        console.log(`Transferring ${amount} $ARB to ${recipientPublicKey.toBase58()}...`);
 
-      const programId = await this.getProgramId();
-
-      // Get token accounts
-      const treasuryTokenAccount = await getAssociatedTokenAddress(
-        ARB_TOKEN_MINT,
-        this.treasuryKeypair.publicKey,
-        false,
-        programId
-      );
-
-      const recipientTokenAccount = await getAssociatedTokenAddress(
-        ARB_TOKEN_MINT,
-        recipientPublicKey,
-        false,
-        programId
-      );
-
-      // Create transaction
-      const transaction = new Transaction();
-
-      // Check if recipient token account exists, if not create it
-      try {
-        await getAccount(this.connection, recipientTokenAccount, undefined, programId);
-      } catch {
-        // Create associated token account for recipient
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            this.treasuryKeypair.publicKey, // payer
-            recipientTokenAccount,
-            recipientPublicKey,
+        const programId = await this.getProgramId();
+        
+        // 1. Get Accounts
+        const treasuryTokenAccount = await getAssociatedTokenAddress(
             ARB_TOKEN_MINT,
+            this.treasuryKeypair!.publicKey,
+            false,
             programId
-          )
         );
-      }
+        const recipientTokenAccount = await getAssociatedTokenAddress(
+            ARB_TOKEN_MINT,
+            recipientPublicKey,
+            false,
+            programId
+        );
 
-      // Add transfer instruction
-      const tokenAmount = this.toTokenAmount(amount);
-      transaction.add(
-        createTransferInstruction(
-          treasuryTokenAccount,
-          recipientTokenAccount,
-          this.treasuryKeypair.publicKey,
-          tokenAmount,
-          [],
-          programId
-        )
-      );
+        // 2. Build Transaction
+        const transaction = new Transaction();
 
-      // Get recent blockhash
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = this.treasuryKeypair.publicKey;
+        // Check/Create destination ATA
+        try {
+            await getAccount(connection, recipientTokenAccount, undefined, programId);
+        } catch {
+            transaction.add(
+              createAssociatedTokenAccountInstruction(
+                this.treasuryKeypair!.publicKey,
+                recipientTokenAccount,
+                recipientPublicKey,
+                ARB_TOKEN_MINT,
+                programId
+              )
+            );
+        }
 
-      // Sign and send transaction
-      transaction.sign(this.treasuryKeypair);
-      const signature = await this.connection.sendRawTransaction(transaction.serialize());
-      
-      // Confirm transaction
-      await this.connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight
-      });
+        // Add Transfer
+        transaction.add(
+            createTransferInstruction(
+              treasuryTokenAccount,
+              recipientTokenAccount,
+              this.treasuryKeypair!.publicKey,
+              this.toTokenAmount(amount),
+              [],
+              programId
+            )
+        );
 
-      console.log('Token transfer successful:', signature);
-      return signature;
+        // 3. Send and Confirm
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = this.treasuryKeypair!.publicKey;
+        transaction.sign(this.treasuryKeypair!);
 
-    } catch (error) {
-      console.error('Token transfer failed:', error);
-      throw error;
-    }
+        const signature = await connection.sendRawTransaction(transaction.serialize());
+        await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+
+        console.log('Token transfer successful:', signature);
+        return signature;
+
+    }, "transferTokens");
   }
 
   /**
-   * Get user's $ARB token balance
+   * Get user's $ARB token balance with retry
    */
   async getTokenBalance(userPublicKey: PublicKey): Promise<number> {
-    try {
-      const tokenAccount = await this.ensureTokenAccount(userPublicKey);
-      if (!tokenAccount) return 0;
-
-      const programId = await this.getProgramId();
-      const accountInfo = await getAccount(this.connection, tokenAccount, undefined, programId);
-      return this.fromTokenAmount(Number(accountInfo.amount));
-    } catch (error) {
-      console.log('No token account found or error:', error);
-      return 0;
-    }
+    return this.executeWithRetry(async (connection) => {
+        try {
+            // Need to replicate ensureTokenAccount logic but read-only
+            const programId = await this.getProgramId();
+            const ata = await getAssociatedTokenAddress(ARB_TOKEN_MINT, userPublicKey, false, programId);
+            const info = await getAccount(connection, ata, undefined, programId);
+            return this.fromTokenAmount(Number(info.amount));
+        } catch (error) {
+            return 0;
+        }
+    }, "getTokenBalance");
   }
 
   /**
    * Ensure ATA exists; create it (paid by treasury) if missing.
    */
   private async ensureTokenAccount(userPublicKey: PublicKey): Promise<PublicKey | null> {
-    const programId = await this.getProgramId();
-    const associatedTokenAddress = await getAssociatedTokenAddress(
-      ARB_TOKEN_MINT,
-      userPublicKey,
-      false,
-      programId
-    );
-
-    try {
-      await getAccount(this.connection, associatedTokenAddress, undefined, programId);
-      return associatedTokenAddress;
-    } catch (error) {
-      if (!this.treasuryKeypair) {
-        console.warn('Treasury keypair missing; cannot create ATA for', userPublicKey.toBase58());
-        return null;
-      }
-
+    return this.executeWithRetry(async (connection) => {
+      const programId = await this.getProgramId();
+      const associatedTokenAddress = await getAssociatedTokenAddress(
+        ARB_TOKEN_MINT,
+        userPublicKey,
+        false,
+        programId
+      );
+  
       try {
-        const transaction = new Transaction().add(
-          createAssociatedTokenAccountInstruction(
-            this.treasuryKeypair.publicKey, // payer
-            associatedTokenAddress,
-            userPublicKey,
-            ARB_TOKEN_MINT,
-            programId
-          )
-        );
-
-        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = this.treasuryKeypair.publicKey;
-
-        transaction.sign(this.treasuryKeypair);
-        const signature = await this.connection.sendRawTransaction(transaction.serialize());
-        await this.connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
-
+        await getAccount(connection, associatedTokenAddress, undefined, programId);
         return associatedTokenAddress;
-      } catch (creationError) {
-        console.error('Failed to create associated token account:', creationError);
-        return null;
+      } catch (error) {
+        if (!this.treasuryKeypair) {
+          console.warn('Treasury keypair missing; cannot create ATA for', userPublicKey.toBase58());
+          return null;
+        }
+  
+        try {
+          const transaction = new Transaction().add(
+            createAssociatedTokenAccountInstruction(
+              this.treasuryKeypair.publicKey, // payer
+              associatedTokenAddress,
+              userPublicKey,
+              ARB_TOKEN_MINT,
+              programId
+            )
+          );
+  
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = this.treasuryKeypair.publicKey;
+  
+          transaction.sign(this.treasuryKeypair);
+          const signature = await connection.sendRawTransaction(transaction.serialize());
+          await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+  
+          return associatedTokenAddress;
+        } catch (creationError) {
+          console.error('Failed to create associated token account:', creationError);
+          return null;
+        }
       }
-    }
+    }, "ensureTokenAccount");
   }
 
   /**
@@ -267,22 +317,24 @@ export class ARBTokenService {
     if (!this.treasuryKeypair) {
       return 0;
     }
-
-    try {
-      const programId = await this.getProgramId();
-      const treasuryTokenAccount = await getAssociatedTokenAddress(
-        ARB_TOKEN_MINT,
-        this.treasuryKeypair.publicKey,
-        false,
-        programId
-      );
-
-      const accountInfo = await getAccount(this.connection, treasuryTokenAccount, undefined, programId);
-      return this.fromTokenAmount(Number(accountInfo.amount));
-    } catch (error) {
-      console.error('Error getting treasury balance:', error);
-      return 0;
-    }
+    
+    return this.executeWithRetry(async (connection) => {
+      try {
+        const programId = await this.getProgramId();
+        const treasuryTokenAccount = await getAssociatedTokenAddress(
+          ARB_TOKEN_MINT,
+          this.treasuryKeypair!.publicKey,
+          false,
+          programId
+        );
+  
+        const accountInfo = await getAccount(connection, treasuryTokenAccount, undefined, programId);
+        return this.fromTokenAmount(Number(accountInfo.amount));
+      } catch (error) {
+        console.error('Error getting treasury balance:', error);
+        return 0;
+      }
+    }, "getTreasuryBalance");
   }
 
   /**
@@ -325,6 +377,4 @@ export const REWARD_AMOUNTS = {
 };
 
 // Export singleton instance
-export const arbTokenService = new ARBTokenService(
-  process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
-);
+export const arbTokenService = new ARBTokenService();
