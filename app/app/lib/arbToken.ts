@@ -19,7 +19,7 @@ const mintAddress =
     : DEFAULT_ARB_MINT;
 
 export const ARB_TOKEN_MINT = new PublicKey(mintAddress);
-export const ARB_DECIMALS = Number(process.env.NEXT_PUBLIC_ARB_DECIMALS || 9); // ARB token decimals (9)
+export const ARB_DECIMALS = 9; // Hardcoded to match Mainnet Mint D7ao...
 
 // Treasury wallet that holds $ARB tokens for distribution
 // You'll need to fund this wallet with $ARB tokens

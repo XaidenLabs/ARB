@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
       success: true,
       signature,
       explorerUrl: signature
-        ? `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        ? `https://explorer.solana.com/tx/${signature}?cluster=mainnet-beta`
         : null,
       newBalances: {
         points: Math.max(availablePoints - amount, 0),
