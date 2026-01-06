@@ -26,20 +26,12 @@ export const ARB_DECIMALS = 9; // Hardcoded to match Mainnet Mint D7ao...
 const TREASURY_PRIVATE_KEY = process.env.ARB_TREASURY_PRIVATE_KEY || '';
 
 // List of public/free RPC endpoints for failover
-// List of public/free RPC endpoints for failover
 const RPC_ENDPOINTS = [
-  // Prioritize reliable free providers avoiding official mainnet-beta (blocks Vercel)
+  process.env.NEXT_PUBLIC_RPC_ENDPOINT, // User's Custom RPC (if set)
+  'https://rpc.ankr.com/solana',         // Ankr (Often more permissive)
   'https://solana-rpc.publicnode.com',   // PublicNode
-  'https://rpc.ankr.com/solana',         // Ankr
   'https://solana.drpc.org',             // dRPC
-  'https://1rpc.io/sol',                 // 1RPC
-  
-  // Try User Custom RPC only if it's NOT the broken Helius one
-  (process.env.NEXT_PUBLIC_RPC_ENDPOINT && !process.env.NEXT_PUBLIC_RPC_ENDPOINT.includes("helius")) 
-    ? process.env.NEXT_PUBLIC_RPC_ENDPOINT 
-    : undefined,
-
-  'https://api.mainnet-beta.solana.com', // Official Public (Last resort due to rate limits)
+  'https://api.mainnet-beta.solana.com', // Official (Often blocks Vercel/AWS)
 ].filter(Boolean) as string[];
 
 export class ARBTokenService {
@@ -93,7 +85,7 @@ export class ARBTokenService {
              console.log(`Non-network error encountered on ${currentUrl}:`, error.message);
              throw error; // Don't retry logic errors
         }
-        console.warn(`RPC failed (${currentUrl}) with ${msg}, switching...`);
+        console.warn(`RPC failed (${currentUrl}) with ${msg}. Status: ${JSON.stringify(error)}, switching...`);
       }
     }
     throw new Error(`All RPCs failed for ${description}. Last error: ${lastError?.message}`);
