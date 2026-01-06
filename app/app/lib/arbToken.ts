@@ -28,10 +28,10 @@ const TREASURY_PRIVATE_KEY = process.env.ARB_TREASURY_PRIVATE_KEY || '';
 // List of public/free RPC endpoints for failover
 const RPC_ENDPOINTS = [
   process.env.NEXT_PUBLIC_RPC_ENDPOINT, // User's Custom RPC (if set)
-  'https://rpc.ankr.com/solana',         // Ankr (Often more permissive)
-  'https://solana-rpc.publicnode.com',   // PublicNode
-  'https://solana.drpc.org',             // dRPC
-  'https://api.mainnet-beta.solana.com', // Official (Often blocks Vercel/AWS)
+  'https://solana-rpc.publicnode.com',   // PublicNode (Tested Working)
+  'https://solana.drpc.org',             // dRPC (Tested Working)
+  'https://api.mainnet-beta.solana.com', // Official
+  'https://rpc.ankr.com/solana',         // Ankr (Blocking this user)
 ].filter(Boolean) as string[];
 
 export class ARBTokenService {

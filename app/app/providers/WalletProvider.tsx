@@ -24,7 +24,7 @@ export const SolanaWalletProvider: FC<SolanaProviderProps> = ({ children }) => {
   // You can also provide a custom RPC endpoint
   // Fallback to public node if env var fails or is invalid (User reported 401s)
   const endpoint = useMemo(() => {
-    // FORCE public endpoint (PublicNode) to unblock user from 403 errors
+    // FORCE public endpoint (PublicNode) to unblock user from 403 errors (Ankr blocked this IP)
     const targetUrl = "https://solana-rpc.publicnode.com";
     console.log("WalletProvider forcing endpoint:", targetUrl);
     return targetUrl;
