@@ -2,11 +2,15 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Linkedin, Twitter, Facebook } from 'lucide-react';
 
 export function Footer() {
   const [email, setEmail] = useState('');
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/admin")) return null;
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,10 +27,10 @@ export function Footer() {
           <div className="space-y-8">
             {/* Logo and Navigation */}
             <div className="flex items-center space-x-3">
-              <Image 
-                src="/logo.svg" 
-                alt="Africa Research Base Logo" 
-                width={40} 
+              <Image
+                src="/logo.svg"
+                alt="Africa Research Base Logo"
+                width={40}
                 height={40}
                 className="w-10 h-10"
               />
@@ -71,25 +75,25 @@ export function Footer() {
 
             {/* Social Media Icons */}
             <div className="flex items-center space-x-4">
-              <a 
-                href="https://linkedin.com/company/africa-research-base" 
-                target="_blank" 
+              <a
+                href="https://linkedin.com/company/africa-research-base"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
               >
                 <Linkedin className="w-5 h-5" />
               </a>
-              <a 
-                href="https://facebook.com/africa-research-base" 
-                target="_blank" 
+              <a
+                href="https://facebook.com/africa-research-base"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
               >
                 <Facebook className="w-5 h-5" />
               </a>
-              <a 
-                href="https://x.com/AfResearchBase" 
-                target="_blank" 
+              <a
+                href="https://x.com/AfResearchBase"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
               >

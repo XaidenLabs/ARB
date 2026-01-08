@@ -35,7 +35,7 @@ export default function LoginPage() {
         if (error) {
             alert("Error signing in: " + error.message);
         } else {
-            router.push("/dashboard");
+            router.push("/wallet");
             router.refresh();
         }
         setLoading(false);
