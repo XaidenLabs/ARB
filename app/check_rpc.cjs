@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const { Connection } = require('@solana/web3.js');
 require('dotenv').config({ path: '.env.local' });

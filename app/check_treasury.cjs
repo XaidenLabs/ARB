@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const { Connection, Keypair, PublicKey } = require('@solana/web3.js');
 const { getAssociatedTokenAddress, getAccount } = require('@solana/spl-token');

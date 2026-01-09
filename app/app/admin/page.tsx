@@ -8,8 +8,8 @@ import {
     ArrowTrendingDownIcon,
     CircleStackIcon,
     ShieldCheckIcon,
-    ClockIcon
 } from "@heroicons/react/24/outline";
+import DeviceMap from "../components/admin/DeviceMap";
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -105,8 +105,8 @@ export default function AdminDashboard() {
                                     </div>
                                     {/* Percentage Badge */}
                                     <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${card.change !== 0
-                                            ? (isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400')
-                                            : 'bg-white/5 text-gray-400'
+                                        ? (isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400')
+                                        : 'bg-white/5 text-gray-400'
                                         }`}>
                                         {card.change !== 0 && (isPositive ? '+' : '-')}
                                         {changeText}
@@ -161,23 +161,35 @@ export default function AdminDashboard() {
                     </div>        </div>
 
                 {/* Side List */}
-                <div className="rounded-2xl bg-[#1A1D27] border border-white/5 p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Recent Alerts</h3>
-                    <div className="space-y-4">
-                        {[
-                            { title: "New Withdrawal High", time: "2m ago", icon: ArrowTrendingDownIcon, color: "text-orange-400" },
-                            { title: "Treasury Deposit", time: "1h ago", icon: ShieldCheckIcon, color: "text-green-400" },
-                            { title: "User Verify Request", time: "3h ago", icon: UsersIcon, color: "text-blue-400" },
-                            { title: "System Maintained", time: "5h ago", icon: ClockIcon, color: "text-gray-400" },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
-                                <item.icon className={`h-5 w-5 ${item.color}`} />
-                                <div>
-                                    <p className="text-sm font-medium text-gray-200">{item.title}</p>
-                                    <p className="text-xs text-gray-500">{item.time}</p>
+                <div className="rounded-2xl bg-[#1A1D27] border border-white/5 p-6 flex flex-col gap-6">
+                    {/* Map Section */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-white mb-4">Live Connections</h3>
+                        {loading ? (
+                            <div className="h-[300px] w-full bg-white/5 animate-pulse rounded-2xl"></div>
+                        ) : (
+
+                            <DeviceMap data={stats?.geoData || []} />
+                        )}
+                    </div>
+
+                    {/* Alerts (Compact) */}
+                    <div>
+                        <h3 className="text-sm font-medium text-gray-400 mb-3 uppercase tracking-wider">Recent Alerts</h3>
+                        <div className="space-y-3">
+                            {[
+                                { title: "New Withdrawal High", time: "2m ago", icon: ArrowTrendingDownIcon, color: "text-orange-400" },
+                                { title: "Treasury Deposit", time: "1h ago", icon: ShieldCheckIcon, color: "text-green-400" },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-black/20 border border-white/5 hover:bg-white/5 transition-colors">
+                                    <item.icon className={`h-4 w-4 ${item.color}`} />
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-200">{item.title}</p>
+                                        <p className="text-[10px] text-gray-500">{item.time}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

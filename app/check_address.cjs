@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const { PublicKey } = require('@solana/web3.js');
 

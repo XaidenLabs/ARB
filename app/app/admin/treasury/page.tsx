@@ -31,7 +31,7 @@ export default function TreasuryPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Treasury Management</h1>
                     <p className="mt-1 text-sm text-gray-400">
-                        Monitor the project's liquidity and on-chain assets.
+                        Monitor the project&apos;s liquidity and on-chain assets.
                     </p>
                 </div>
                 <div>
