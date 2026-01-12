@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from 'react';
-import { Upload, TrendingUp, Globe, Sparkles, ShieldCheck, Users, Rocket, ArrowRight, HeartHandshake } from 'lucide-react';
+import { Upload, TrendingUp, Globe as GlobeIcon, Sparkles, ShieldCheck, Users, Rocket, ArrowRight, HeartHandshake } from 'lucide-react';
+import { Globe } from './Globe';
 
 interface HeroSectionProps {
   onExploreClick: () => void;
@@ -30,112 +31,145 @@ export function HeroSection({ onExploreClick, onJoinDaoClick }: HeroSectionProps
 
   return (
     <>
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#0b1222] to-[#0d1a33] text-white">
-        <div className="absolute inset-0">
-          <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
-          <div className="absolute right-0 top-10 h-72 w-72 rounded-full bg-amber-500/20 blur-3xl" />
-          <div className="absolute left-1/4 bottom-0 h-60 w-60 rounded-full bg-purple-500/20 blur-3xl" />
+      <section className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-[#02050a] text-white pt-20 pb-16">
+        {/* Cosmic Background Effects */}
+        {/* Cosmic Background Effects */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Noise Texture Overlay - Increased Visibility */}
+          <div className="absolute inset-0 opacity-[0.20] mix-blend-overlay"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+            }}
+          />
+
+          {/* Stars - Increased Brightness */}
+          <div className="absolute inset-0 animate-pulse-slow"
+            style={{
+              backgroundImage: 'radial-gradient(white 1.5px, transparent 1.5px)',
+              backgroundSize: '40px 40px',
+              opacity: 0.3
+            }}
+          />
+          <div className="absolute inset-0"
+            style={{
+              backgroundImage: 'radial-gradient(white 1px, transparent 1px)',
+              backgroundSize: '90px 90px',
+              opacity: 0.25,
+              backgroundPosition: '15px 15px'
+            }}
+          />
+
+          {/* Central Cosmic Glow / Eclipse - INTENSIFIED */}
+          <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[90vw] h-[50vh] bg-indigo-600/40 blur-[100px] rounded-[100%] mix-blend-screen" />
+          <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[60vw] h-[30vh] bg-blue-500/30 blur-[60px] rounded-[100%] mix-blend-overlay" />
+
+          {/* Planet Horizon Edge - Defined */}
+          <div className="absolute -top-[60%] left-1/2 -translate-x-1/2 w-[180vw] h-[180vw] border border-blue-400/20 rounded-full blur-[1px] opacity-40 shadow-[0_0_100px_rgba(59,130,246,0.3)]" />
+
+          {/* ROTATING GLOBE */}
+          <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] opacity-60 mix-blend-screen grayscale">
+            <Globe className="w-full h-full" />
+          </div>
+
+          {/* Gradient Mask for Globe */}
+          <div className="absolute bottom-0 left-0 right-0 h-[300px] bg-gradient-to-t from-[#02050a] via-[#02050a]/90 to-transparent z-10" />
+
+          <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-purple-900/30 blur-[120px] rounded-full mix-blend-screen opacity-60" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-semibold border border-white/20">
-                <Sparkles className="w-4 h-4 text-amber-300" /> Africa Research Base
-              </div>
+        {/* Content Container */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center pt-16">
 
-              <div className="space-y-4">
-                <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-white">
-                  The command center for Africa&apos;s research, data, and funding
-                </h1>
-                <p className="text-lg text-gray-200 leading-relaxed">
-                  Upload, verify, and monetize African datasets with transparent governance. Discover collaborators,
-                  reviewers, and backers in one trusted hub.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={onExploreClick}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 font-semibold shadow-lg shadow-blue-500/20 transition"
-                >
-                  Explore data <ArrowRight className="w-4 h-4" />
-                </button>
-                
-                {onJoinDaoClick && (
-                  <button
-                    onClick={onJoinDaoClick}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/30 bg-white/5 hover:bg-white/10 font-semibold transition"
-                  >
-                    Join DAO <HeartHandshake className="w-4 h-4 text-amber-200" />
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-gray-200">
-                {[
-                  { icon: ShieldCheck, label: "Verified datasets" },
-                  { icon: TrendingUp, label: "Funding-ready" },
-                  { icon: Users, label: "Review network" },
-                  { icon: Globe, label: "Pan-African reach" },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                    <Icon className="w-4 h-4 text-amber-200" />
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Content - Feature Card */}
-            <div
-              className={`relative bg-white/10 backdrop-blur-xl rounded-3xl border border-white/15 p-8 shadow-2xl text-white overflow-hidden ${isCardClicked ? 'scale-95 shadow-lg' : 'hover:shadow-3xl hover:scale-[1.02]'} transition`}
-              onClick={handleCardClick}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-amber-500/5 to-blue-500/5 opacity-70" />
-              <div className="relative space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-400/20 flex items-center justify-center">
-                    <Rocket className="w-5 h-5 text-amber-200" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-200">Featured mission</p>
-                    <p className="text-lg font-semibold text-white">Sovereign AI data vault</p>
-                  </div>
-                </div>
-
-                {[
-                  { icon: Upload, title: "Upload", desc: "Ship your dataset with on-chain provenance" },
-                  { icon: TrendingUp, title: "Earn", desc: "Funding, points, and verification rewards" },
-                  { icon: Globe, title: "Impact", desc: "Power local AI, policy, and innovation" },
-                ].map(({ icon: Icon, title, desc }) => (
-                  <div key={title} className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/10 p-4">
-                    <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-amber-200" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{title}</p>
-                      <p className="text-sm text-gray-200">{desc}</p>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  {[
-                    { label: "Datasets", value: "5.2k" },
-                    { label: "Reviewers", value: "1.1k" },
-                    { label: "Cities", value: "120+" },
-                  ].map((stat) => (
-                    <div key={stat.label} className="rounded-xl bg-white/5 border border-white/10 p-3">
-                      <p className="text-lg font-bold text-white">{stat.value}</p>
-                      <p className="text-xs text-gray-200">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-sm font-medium text-gray-300 mb-8 animate-fade-in-up">
+            <Sparkles className="w-4 h-4 text-blue-400" />
+            <span>Africa Research Base</span>
           </div>
+
+          {/* Heading */}
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight leading-[1.1] mb-6 text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/70">
+            The command center for <span className="italic text-blue-200 inline-block transition-all duration-300 hover:scale-110 hover:-rotate-2 hover:text-blue-300 hover:drop-shadow-[0_0_15px_rgba(147,197,253,0.5)] cursor-pointer">Africa&apos;s</span> research, data, and <span className="italic text-purple-200">funding</span>.
+          </h1>
+
+          {/* Description */}
+          <p className="max-w-2xl text-lg md:text-xl text-gray-400 leading-relaxed mb-10">
+            Upload, verify, and monetize African datasets with transparent governance. Discover collaborators,
+            reviewers, and backers in one trusted hub.
+          </p>
+
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-20">
+            <button
+              onClick={onExploreClick}
+              className="group relative px-8 py-4 rounded-full bg-blue-600 font-semibold text-white shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-10px_rgba(37,99,235,0.7)] transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative flex items-center gap-2">
+                Explore data <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </button>
+
+            {onJoinDaoClick && (
+              <button
+                onClick={onJoinDaoClick}
+                className="px-8 py-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 font-medium text-gray-200 transition-all hover:border-white/20"
+              >
+                Join DAO
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Stats / Feature Pill */}
+          <div
+            onClick={handleCardClick}
+            className={`
+              relative group cursor-pointer
+              flex flex-col md:flex-row items-stretch md:items-center gap-6 
+              p-2 md:pr-8 rounded-[2rem] 
+              bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 
+              transition-all duration-500 ease-out
+              ${isCardClicked ? 'scale-[0.98] ring-2 ring-blue-500/50' : 'hover:scale-[1.01] hover:border-white/20 hover:shadow-2xl hover:shadow-blue-900/10'}
+            `}
+          >
+            {/* Featured Section */}
+            <div className="flex items-center gap-4 bg-white/5 rounded-[1.5rem] p-4 border border-white/5">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                <Rocket className="w-6 h-6 text-blue-300" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Featured Mission</p>
+                <p className="text-sm font-medium text-white">Sovereign AI data vault</p>
+              </div>
+            </div>
+
+            {/* Separator (Hidden on mobile) */}
+            <div className="hidden md:block w-px h-12 bg-white/10" />
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-8 px-4 md:px-0">
+              {[
+                { label: "Active Users", value: "5.2k" },
+                { label: "Insights Delivered", value: "1.1k" },
+                { label: "System Reliability", value: "99%" },
+              ].map((stat) => (
+                <div key={stat.label} className="text-center md:text-left space-y-1">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{stat.label}</p>
+                  <p className="text-xl font-serif text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Glow Effect */}
+            <div className="absolute -inset-px rounded-[2rem] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          </div>
+
+          <div className="mt-8 flex items-center justify-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+            {/* Brands / Partners Placeholders if needed, or keeping it clean as per design */}
+            <div className="flex items-center gap-2 text-sm font-semibold text-white"><ShieldCheck className="w-5 h-5" /> Lightspeed</div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white"><Globe className="w-5 h-5" /> Chromainc</div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="w-5 h-5" /> Convergence</div>
+          </div>
+
         </div>
       </section>
 
